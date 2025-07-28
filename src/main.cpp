@@ -23,36 +23,58 @@ PowerManager powerManager(POWER_CONTROL_PIN, WAKEUP_INTERRUPT_PIN, LogicLevel::A
 Timer sensorUpdateTimer(1000); 
 Timer ledUpdateTimer(500);      
 Timer heartbeatTimer(5000);
+Timer builtinLedTimer(250); // Timer do mrugania wbudowaną diodą LED
 
 String g_dateStr, g_timeForLcd, g_timeForLed;
 float g_temp_external, g_temp_internal, g_humidity, g_pressure;
 
 void setup() {
+  pinMode(LED_BUILTIN, OUTPUT); // Inicjalizacja wbudowanej diody LED
   Serial.begin(9600);
   Serial.println("\nBooting SmartTent System...");
 
-  clock.init(); 
-  
+  if (!clock.init()) {
+    Serial.println("Błąd inicjalizacji zegara RTC! Zatrzymuję program.");
+    //while (1); // Zatrzymanie programu, krytyczny błąd. Odkomentuj w wersji finalnej.
+  } else {
+    Serial.println("Zegar RTC OK.");
+  }
+    
   if (SLEEP_MODE_ENABLED) {
     Serial.println("Tryb oszczędzania energii WŁĄCZONY.");
-    powerManager.begin(clock, lcd);
+    powerManager.begin(clock, lcd, led, sensor);
   } else {
     Serial.println("Tryb oszczędzania energii WYŁĄCZONY. System będzie działał w trybie ciągłym.");
     pinMode(POWER_CONTROL_PIN, OUTPUT);
-    
+
     // ZMIANA: Używamy teraz publicznej metody z PowerManagera do włączenia zasilania
     powerManager.powerUpPeripherals();
-    
+
     // Inicjalizujemy resztę modułów
-    sensor.init();
-    lcd.init();
+    if (!sensor.init()) {
+      Serial.println("Błąd inicjalizacji czujnika BME280!");
+    } else {
+      Serial.println("Czujnik BME280 OK.");
+    }
+
+   
+    lcd.init(); 
+    Serial.println("Wyświetlacz LCD zainicjalizowany.");
+
     led.init(10);
+    Serial.println("Wyświetlacz LED zainicjalizowany.");
+    
     lcd.printWelcomeMessage();
-    delay(2000);
+    delay(5000);
   }
 }
 
 void loop() {
+  // Mruganie wbudowaną diodą LED jako "heartbeat" systemu
+  if (builtinLedTimer.isReady()) {
+    digitalWrite(LED_BUILTIN, !digitalRead(LED_BUILTIN));
+  }
+
   if (SLEEP_MODE_ENABLED) {
     powerManager.update();
   }
@@ -70,9 +92,12 @@ void loop() {
       g_humidity = sensor.getHumidity();
       g_pressure = sensor.getPressure();
       g_temp_internal = clock.getTemperature();
-      g_dateStr = clock.getDateString();
-      g_timeForLcd = clock.getTimeString(true);
-      g_timeForLed = clock.getTimeString(false);
+
+      DateTime now = clock.getTime(); // Pobierz czas tylko raz
+      g_dateStr = Clock::formatDate(now);
+      g_timeForLcd = Clock::formatTime(now, true);
+      g_timeForLed = Clock::formatTime(now, false);
+
       lcd.update(g_dateStr, g_timeForLcd, g_temp_external, g_temp_internal, g_humidity, g_pressure);
     }
 

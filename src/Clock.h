@@ -12,9 +12,9 @@ public:
   bool init();
   DateTime getTime();
 
-  String getDateString();
-  String getTimeString(bool withSeconds = false);
-  
+  static String formatDate(const DateTime& dt);
+  static String formatTime(const DateTime& dt, bool withSeconds = false);
+
   float getTemperature();
 
   // Dostęp do obiektu rtc, aby zarządzać alarmami z pliku .ino

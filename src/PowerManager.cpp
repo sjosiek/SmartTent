@@ -18,9 +18,11 @@ PowerManager::PowerManager(int powerPin, int interruptPin, LogicLevel logic)
     }
 }
 
-void PowerManager::begin(Clock& clock, LcdDisplay& lcd) {
+void PowerManager::begin(Clock& clock, LcdDisplay& lcd, LedDisplay& led, WeatherSensor& sensor) {
   _clock = &clock;
   _lcd = &lcd;
+  _led = &led;
+  _sensor = &sensor;
 
   pinMode(_powerPin, OUTPUT);
   pinMode(_interruptPin, INPUT_PULLUP);
@@ -45,6 +47,12 @@ void PowerManager::update() {
       Serial.println("Stan: POWER_UP");
       powerUpPeripherals();
       _lcd->init();
+      _led->init(10);
+      if (!_sensor->init()) {
+        Serial.println("Błąd inicjalizacji czujnika BME280 w PowerManager!");
+      } else {
+        Serial.println("Czujnik BME280 OK (PowerManager).");
+      }
       _lcd->printWelcomeMessage();
       delay(2000);
       _activeModeTimer.reset();

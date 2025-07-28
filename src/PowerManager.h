@@ -7,6 +7,8 @@
 #include <avr/sleep.h>
 #include "Clock.h"
 #include "LcdDisplay.h"
+#include "LedDisplay.h"
+#include "WeatherSensor.h"
 #include "Timer.h"
 
 enum class LogicLevel {
@@ -23,8 +25,8 @@ enum class SystemState {
 
 class PowerManager {
 public:
-  PowerManager(int powerPin, int interruptPin, LogicLevel logic);
-  void begin(Clock& clock, LcdDisplay& lcd);
+  PowerManager(int powerPin, int interruptPin, LogicLevel logic); // Zostaje bez zmian
+  void begin(Clock& clock, LcdDisplay& lcd, LedDisplay& led, WeatherSensor& sensor);
   void update();
   bool isAwake();
   void resetActiveTimer();
@@ -49,6 +51,8 @@ private:
   
   Clock* _clock;
   LcdDisplay* _lcd;
+  LedDisplay* _led;
+  WeatherSensor* _sensor;
 };
 
 #endif
