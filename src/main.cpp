@@ -8,6 +8,7 @@
 #include "LedDisplay.h"
 #include "Timer.h"
 #include "PowerManager.h"
+#include "CommandHandler.h"
 
 const bool SLEEP_MODE_ENABLED = false;
 
@@ -19,11 +20,12 @@ Clock clock;
 LcdDisplay lcd(0x27, 20, 4);
 LedDisplay led(2, 3);
 PowerManager powerManager(POWER_CONTROL_PIN, WAKEUP_INTERRUPT_PIN, LogicLevel::ACTIVE_HIGH);
+CommandHandler commandHandler(clock);
 
 Timer sensorUpdateTimer(1000); 
 Timer ledUpdateTimer(500);      
 Timer heartbeatTimer(5000);
-Timer builtinLedTimer(250); // Timer do mrugania wbudowaną diodą LED
+Timer builtinLedTimer(1000); // Timer do mrugania wbudowaną diodą LED
 
 String g_dateStr, g_timeForLcd, g_timeForLed;
 float g_temp_external, g_temp_internal, g_humidity, g_pressure;
@@ -34,10 +36,16 @@ void setup() {
   Serial.println("\nBooting SmartTent System...");
 
   if (!clock.init()) {
-    Serial.println("Błąd inicjalizacji zegara RTC! Zatrzymuję program.");
+    Serial.println("Błąd inicjalizacji zegara RTC!");
     //while (1); // Zatrzymanie programu, krytyczny błąd. Odkomentuj w wersji finalnej.
   } else {
     Serial.println("Zegar RTC OK.");
+    // Sprawdzamy, czy zegar nie stracił zasilania i nie zresetował się do domyślnej daty
+    if (clock.rtc.lostPower()) {
+      Serial.println("RTC stracił zasilanie! Ustawiam czas na czas kompilacji.");
+      // Poniższa linia ustawi czas na datę i godzinę kompilacji tego szkicu
+      clock.rtc.adjust(DateTime(F(__DATE__), F(__TIME__)));
+    }
   }
     
   if (SLEEP_MODE_ENABLED) {
@@ -65,11 +73,13 @@ void setup() {
     Serial.println("Wyświetlacz LED zainicjalizowany.");
     
     lcd.printWelcomeMessage();
-    delay(5000);
+    
   }
 }
 
 void loop() {
+  commandHandler.update(); // Sprawdzaj, czy przyszła komenda synchronizacji
+
   // Mruganie wbudowaną diodą LED jako "heartbeat" systemu
   if (builtinLedTimer.isReady()) {
     digitalWrite(LED_BUILTIN, !digitalRead(LED_BUILTIN));
@@ -106,7 +116,15 @@ void loop() {
     }
     
     if (heartbeatTimer.isReady()) { 
-      Serial.print("HEARTBEAT (Aktywny) -> Zewn: ");
+      Serial.print("HEARTBEAT (Aktywny)\n");
+      
+      Serial.print("\nData:");
+      Serial.print(g_dateStr);
+      Serial.print("\nCzas:");
+      Serial.print(g_timeForLcd);
+      Serial.print("\nCzas LED:");
+      Serial.print(g_timeForLed);
+      Serial.print("\nZewn: ");
       Serial.print(g_temp_external);
       Serial.print("C, Wewn: ");
       Serial.print(g_temp_internal);
