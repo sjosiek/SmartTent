@@ -1,0 +1,7 @@
+{
+  // Te ustawienia są specyficzne dla tego obszaru roboczego (workspace).
+
+  // Dodajemy argument dla rozszerzenia C/C++, aby wyłączyć ostrzeżenie o formacie,
+  // które jest błędnie pokazywane przez IntelliSense na platformie AVR.
+  "C_Cpp.default.compilerArgs": ["-Wno-format"]
+}
