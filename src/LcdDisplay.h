@@ -12,7 +12,7 @@ public:
   void init();
   void printWelcomeMessage();
   void printSleepMessage(); // NOWA METODA
-  void update(String date, String time, float temp_ext, float temp_int, float humidity, float pressure);
+  void update(String date, String time, float temp_bme, float hum_bme, float temp_rtc, float press_bme, float temp_dht, float hum_dht);
   void clear();
   void noBacklight();
   void backlight();

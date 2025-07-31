@@ -7,18 +7,29 @@
 #include "LcdDisplay.h"
 #include "LedDisplay.h"
 #include "Timer.h"
+#include "DhtSensor.h"
 #include "PowerManager.h"
 #include "CommandHandler.h"
 
 const bool SLEEP_MODE_ENABLED = false;
 
 #define POWER_CONTROL_PIN 4
-#define WAKEUP_INTERRUPT_PIN 2
+#define WAKEUP_INTERRUPT_PIN 5
+#define LED_CLK_PIN 2
+#define LED_DIO_PIN 3
+#define DHT_PIN 6
+#define DHT_TYPE DHT11
+#define LCD_ADDRESS 0x27
+#define LCD_COLS 20
+#define LCD_ROWS 4
+
+
 
 WeatherSensor sensor;
 Clock clock;
-LcdDisplay lcd(0x27, 20, 4);
-LedDisplay led(2, 3);
+LcdDisplay lcd(LCD_ADDRESS, LCD_COLS, LCD_ROWS);
+LedDisplay led(LED_CLK_PIN, LED_DIO_PIN);
+DhtSensor dhtSensor(DHT_PIN, DHT_TYPE);
 PowerManager powerManager(POWER_CONTROL_PIN, WAKEUP_INTERRUPT_PIN, LogicLevel::ACTIVE_HIGH);
 CommandHandler commandHandler(clock);
 
@@ -29,6 +40,7 @@ Timer builtinLedTimer(1000); // Timer do mrugania wbudowaną diodą LED
 
 String g_dateStr, g_timeForLcd, g_timeForLed;
 float g_temp_external, g_temp_internal, g_humidity, g_pressure;
+float g_temp_dht, g_humidity_dht;
 
 void setup() {
   pinMode(LED_BUILTIN, OUTPUT); // Inicjalizacja wbudowanej diody LED
@@ -64,6 +76,9 @@ void setup() {
     } else {
       Serial.println("Czujnik BME280 OK.");
     }
+
+    dhtSensor.init();
+    Serial.println("Czujnik DHT11 zainicjalizowany.");
 
    
     lcd.init(); 
@@ -102,13 +117,17 @@ void loop() {
       g_humidity = sensor.getHumidity();
       g_pressure = sensor.getPressure();
       g_temp_internal = clock.getTemperature();
+      
+      dhtSensor.readData();
+      g_temp_dht = dhtSensor.getTemperature();
+      g_humidity_dht = dhtSensor.getHumidity();
 
       DateTime now = clock.getTime(); // Pobierz czas tylko raz
       g_dateStr = Clock::formatDate(now);
       g_timeForLcd = Clock::formatTime(now, true);
       g_timeForLed = Clock::formatTime(now, false);
 
-      lcd.update(g_dateStr, g_timeForLcd, g_temp_external, g_temp_internal, g_humidity, g_pressure);
+      lcd.update(g_dateStr, g_timeForLcd, g_temp_external, g_humidity, g_temp_internal, g_pressure, g_temp_dht, g_humidity_dht);
     }
 
     if (ledUpdateTimer.isReady()) { 
@@ -128,6 +147,10 @@ void loop() {
       Serial.print(g_temp_external);
       Serial.print("C, Wewn: ");
       Serial.print(g_temp_internal);
+      Serial.print("C, Namiot: ");
+      Serial.print(g_temp_dht);
+      Serial.print("C, Wilg(N): ");
+      Serial.print(g_humidity_dht);
       Serial.println("C");
     }
   }
