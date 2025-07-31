@@ -122,8 +122,9 @@ void PowerManager::handleWakeUp() {
   if (g_interruptFired) {
     if (_clock->rtc.alarmFired(1)) {
       _clock->rtc.clearAlarm(1);
-      Serial.println("Obudził mnie ALARM. Zadanie w tle i powrót do snu.");
-      _currentState = SystemState::PREPARE_SLEEP;
+      Serial.println("Obudził mnie ALARM. Uruchamiam system na cykl pracy.");
+      // ZMIANA: Przechodzimy do POWER_UP, aby wykonać pełny cykl pracy, a nie od razu spać.
+      _currentState = SystemState::POWER_UP;
     } else {
       Serial.println("Obudził mnie PRZYCISK. Uruchamiam system.");
       _currentState = SystemState::POWER_UP;
