@@ -17,11 +17,15 @@ public:
 
   float getTemperature();
 
-  // Dostęp do obiektu rtc, aby zarządzać alarmami z pliku .ino
-  RTC_DS3231 rtc;
+  // Metody opakowujące funkcje RTC dla lepszej hermetyzacji
+  void adjust(const DateTime& dt);
+  bool lostPower();
+  bool setAlarm1(const DateTime& dt, Ds3231Alarm1Mode alarm_mode);
+  bool alarmFired(uint8_t alarm_num);
+  void clearAlarm(uint8_t alarm_num);
 
 private:
-  // RTC_DS3231 rtc; // Przeniesiono do public
+  RTC_DS3231 rtc;
 };
 
 #endif

@@ -26,7 +26,7 @@ void CommandHandler::update() {
       int second = payload.substring(17, 19).toInt();
 
       // Ustaw czas w RTC, używając wskaźnika do obiektu Clock
-      _clock->rtc.adjust(DateTime(year, month, day, hour, minute, second));
+      _clock->adjust(DateTime(year, month, day, hour, minute, second));
 
       String confirmation = "OK: Czas zsynchronizowany do " + payload;
       Serial.println(confirmation);
