@@ -2,30 +2,31 @@
 
 #include "PowerManager.h"
 
-volatile bool g_interruptFired = false;
-void wakeUpISR() { g_interruptFired = true; }
+// ZMIANA: Dwa źródła przerwań i flaga do ich rozróżnienia
+volatile WakeUpSource g_wakeUpSource = WakeUpSource::NONE;
+void wakeUpISR_RTC() { g_wakeUpSource = WakeUpSource::RTC_ALARM; }
+void wakeUpISR_Touch() { g_wakeUpSource = WakeUpSource::MANUAL_TOUCH; }
 
-// ZMIANA: Konstruktor ustawia stany _onState i _offState na podstawie parametru
-PowerManager::PowerManager(int powerPin, int interruptPin, LogicLevel logic) 
-  : _powerPin(powerPin), _interruptPin(interruptPin), _activeModeTimer(60000) {
+PowerManager::PowerManager(int powerPin, int rtcAlarmPin, int manualWakeupPin) 
+  : _powerPin(powerPin), _rtcAlarmPin(rtcAlarmPin), _manualWakeupPin(manualWakeupPin), _activeModeTimer(60000) {
     _currentState = SystemState::POWER_UP;
-    if (logic == LogicLevel::ACTIVE_LOW) {
-      _onState = LOW;
-      _offState = HIGH;
-    } else { // ACTIVE_HIGH
-      _onState = HIGH;
-      _offState = LOW;
-    }
+    // Logika zasilania peryferiów jest stała (sterowanie tranzystorem)
+    // Zakładamy, że stan HIGH włącza zasilanie.
+    _onState = HIGH;
+    _offState = LOW;
 }
 
-void PowerManager::begin(Clock& clock, LcdDisplay& lcd, LedDisplay& led, WeatherSensor& sensor) {
+void PowerManager::begin(Clock& clock, LcdDisplay& lcd, LedDisplay& led, WeatherSensor& sensor, DhtSensor& dht) {
   _clock = &clock;
   _lcd = &lcd;
   _led = &led;
   _sensor = &sensor;
-
+  _dht = &dht;
+  
   pinMode(_powerPin, OUTPUT);
-  pinMode(_interruptPin, INPUT_PULLUP);
+  pinMode(_rtcAlarmPin, INPUT_PULLUP); // Alarm RTC zwiera do masy (FALLING)
+  // Czujnik dotykowy jest aktywny stanem wysokim, nie wymaga rezystora podciągającego.
+  pinMode(_manualWakeupPin, INPUT);
   
   powerDownPeripherals();
 }
@@ -53,6 +54,8 @@ void PowerManager::update() {
       } else {
         Serial.println("Czujnik BME280 OK (PowerManager).");
       }
+      _dht->init();
+      Serial.println("Czujnik DHT11 zainicjalizowany (PowerManager).");
       _lcd->printWelcomeMessage();
       delay(2000);
       _activeModeTimer.reset();
@@ -99,34 +102,48 @@ void PowerManager::prepareToSleep() {
   powerDownPeripherals();
 
   DateTime now = _clock->getTime();
-  DateTime future(now + TimeSpan(0, 0, 5, 0)); // 5 minut
-  if (!_clock->rtc.setAlarm1(future, DS3231_A1_Second)) {
+  // Ustawiamy alarm na 5 minut w przyszłość, zgodnie z komunikatem.
+  DateTime future(now + TimeSpan(0, 0, 5, 0));
+  // Używamy DS3231_A1_Date, aby alarm zadziałał o konkretnej dacie i godzinie.
+  // Poprzedni tryb (DS3231_A1_Second) powodował, że alarm dzwonił co minutę,
+  // gdy tylko sekundy się zgadzały, co nie było zamierzonym zachowaniem.
+  if (!_clock->setAlarm1(future, DS3231_A1_Date)) {
     Serial.println("Błąd ustawiania alarmu!");
   }
   Serial.println("Ustawiono alarm na za 5 minut. Dobranoc.");
-  delay(100);
+  delay(100); // Krótki delay na wszelki wypadek.
+  Serial.flush(); // KLUCZOWA ZMIANA: Czekamy, aż wszystkie dane zostaną wysłane przez port szeregowy.
 }
 
 void PowerManager::goToSleep() {
-  set_sleep_mode(SLEEP_MODE_PWR_DOWN);
-  g_interruptFired = false;
+  // KRYTYCZNA ZMIANA: Używamy trybu SLEEP_MODE_IDLE zamiast SLEEP_MODE_PWR_DOWN.
+  // Tryb PWR_DOWN na ATmega2560 nie może być wybudzony przez przerwanie typu RISING (zbocze narastające),
+  // a nasz czujnik dotykowy generuje właśnie taki sygnał.
+  // Tryb IDLE zużywa nieco więcej energii, ale pozwala na wybudzenie przez dowolne zbocze przerwania.
+  set_sleep_mode(SLEEP_MODE_IDLE);
+  g_wakeUpSource = WakeUpSource::NONE;
   sleep_enable();
-  attachInterrupt(digitalPinToInterrupt(_interruptPin), wakeUpISR, FALLING);
+  
+  // Podłączamy OBA przerwania
+  attachInterrupt(digitalPinToInterrupt(_rtcAlarmPin), wakeUpISR_RTC, FALLING);
+  // Dla czujnika aktywnego stanem wysokim używamy przerwania RISING.
+  attachInterrupt(digitalPinToInterrupt(_manualWakeupPin), wakeUpISR_Touch, RISING);
+  
   sleep_cpu();
   sleep_disable();
-  detachInterrupt(digitalPinToInterrupt(_interruptPin));
+  detachInterrupt(digitalPinToInterrupt(_rtcAlarmPin));
+  detachInterrupt(digitalPinToInterrupt(_manualWakeupPin));
 }
 
 void PowerManager::handleWakeUp() {
-  Serial.println("Pobudka!");
-  if (g_interruptFired) {
-    if (_clock->rtc.alarmFired(1)) {
-      _clock->rtc.clearAlarm(1);
+  
+  if (g_wakeUpSource != WakeUpSource::NONE) {
+    if (g_wakeUpSource == WakeUpSource::RTC_ALARM) {
+      _clock->clearAlarm(1);
       Serial.println("Obudził mnie ALARM. Uruchamiam system na cykl pracy.");
-      // ZMIANA: Przechodzimy do POWER_UP, aby wykonać pełny cykl pracy, a nie od razu spać.
       _currentState = SystemState::POWER_UP;
-    } else {
-      Serial.println("Obudził mnie PRZYCISK. Uruchamiam system.");
+    } else if (g_wakeUpSource == WakeUpSource::MANUAL_TOUCH) {
+      Serial.println("Obudził mnie DOTYK. Uruchamiam system.");
       _currentState = SystemState::POWER_UP;
     }
   }

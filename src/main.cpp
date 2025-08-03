@@ -10,28 +10,41 @@
 #include "DhtSensor.h"
 #include "PowerManager.h"
 #include "CommandHandler.h"
+#include "DebouncedButton.h" // Dołączamy nową klasę
 
-const bool SLEEP_MODE_ENABLED = false;
-
-#define POWER_CONTROL_PIN 4
-#define WAKEUP_INTERRUPT_PIN 5
-#define LED_CLK_PIN 2
-#define LED_DIO_PIN 3
-#define DHT_PIN 6
-#define DHT_TYPE DHT11
-#define LCD_ADDRESS 0x27
-#define LCD_COLS 20
-#define LCD_ROWS 4
+const bool SLEEP_MODE_ENABLED = true;
 
 
+#define RTC_ALARM_PIN 2         // Pin dla alarmu z RTC (Przerwanie 0) - SQW
+#define WAKEUP_INTERRUPT_PIN 3      // Pin dla czujnika dotykowego (Przerwanie 1)
+#define POWER_CONTROL_PIN 4     // Pin do sterowania zasilaniem peryferiów
+#define DHT_PIN 6               // Nowy pin dla czujnika DHT11
+#define LED_CLK_PIN 8           // CLK pin dla wyświetlacza LED
+#define LED_DIO_PIN 9           // DIO pin dla wyświetlacza LED
 
-WeatherSensor sensor;
-Clock clock;
-LcdDisplay lcd(LCD_ADDRESS, LCD_COLS, LCD_ROWS);
-LedDisplay led(LED_CLK_PIN, LED_DIO_PIN);
-DhtSensor dhtSensor(DHT_PIN, DHT_TYPE);
-PowerManager powerManager(POWER_CONTROL_PIN, WAKEUP_INTERRUPT_PIN, LogicLevel::ACTIVE_HIGH);
+#define DHT_TYPE DHT11          // Typ czujnika DHT11
+
+#define LCD_ADDRESS 0x27        // Adres wyświetlacza LCD
+#define LCD_COLS 20             // Liczba kolumn wyświetlacza
+#define LCD_ROWS 4              // Liczba wierszy wyświetlacza
+
+
+//Inicjalizacja modułów
+
+Clock clock;                   // RTC
+DhtSensor dhtSensor(DHT_PIN, DHT_TYPE);          // DHT11
+WeatherSensor sensor;          //BME 280
+
+LcdDisplay lcd(LCD_ADDRESS, LCD_COLS, LCD_ROWS);  // LCD
+LedDisplay led(LED_CLK_PIN, LED_DIO_PIN);         // LED
+
+// Czujnik dotykowy jest aktywny stanem wysokim (nie ma zworek do zmiany logiki).
+DebouncedButton touchSensor(WAKEUP_INTERRUPT_PIN, ActiveState::ACTIVE_HIGH);
+
+PowerManager powerManager(POWER_CONTROL_PIN, RTC_ALARM_PIN, WAKEUP_INTERRUPT_PIN);
 CommandHandler commandHandler(clock);
+
+
 
 Timer sensorUpdateTimer(1000); 
 Timer ledUpdateTimer(500);      
@@ -41,6 +54,7 @@ Timer builtinLedTimer(1000); // Timer do mrugania wbudowaną diodą LED
 String g_dateStr, g_timeForLcd, g_timeForLed;
 float g_temp_external, g_temp_internal, g_humidity, g_pressure;
 float g_temp_dht, g_humidity_dht;
+
 
 void setup() {
   pinMode(LED_BUILTIN, OUTPUT); // Inicjalizacja wbudowanej diody LED
@@ -53,16 +67,16 @@ void setup() {
   } else {
     Serial.println("Zegar RTC OK.");
     // Sprawdzamy, czy zegar nie stracił zasilania i nie zresetował się do domyślnej daty
-    if (clock.rtc.lostPower()) {
+    if (clock.lostPower()) {
       Serial.println("RTC stracił zasilanie! Ustawiam czas na czas kompilacji.");
       // Poniższa linia ustawi czas na datę i godzinę kompilacji tego szkicu
-      clock.rtc.adjust(DateTime(F(__DATE__), F(__TIME__)));
+      clock.adjust(DateTime(F(__DATE__), F(__TIME__)));
     }
   }
     
   if (SLEEP_MODE_ENABLED) {
     Serial.println("Tryb oszczędzania energii WŁĄCZONY.");
-    powerManager.begin(clock, lcd, led, sensor);
+    powerManager.begin(clock, lcd, led, sensor, dhtSensor);
   } else {
     Serial.println("Tryb oszczędzania energii WYŁĄCZONY. System będzie działał w trybie ciągłym.");
     pinMode(POWER_CONTROL_PIN, OUTPUT);
@@ -106,10 +120,15 @@ void loop() {
   
   if (!SLEEP_MODE_ENABLED || powerManager.isAwake()) {
     
-    if (SLEEP_MODE_ENABLED && digitalRead(WAKEUP_INTERRUPT_PIN) == LOW) {
-      powerManager.resetActiveTimer();
-      delay(200);
+    // Obsługa przycisku za pomocą nowej, czystej klasy
+    if (SLEEP_MODE_ENABLED) {
+      touchSensor.update(); // Zawsze aktualizujemy stan przycisku
+      
+      if (touchSensor.wasPressed()) {
+        powerManager.resetActiveTimer();
+      }
     }
+
     
     if (sensorUpdateTimer.isReady()) { 
       sensor.readData(); 
@@ -135,7 +154,7 @@ void loop() {
     }
     
     if (heartbeatTimer.isReady()) { 
-      Serial.print("HEARTBEAT (Aktywny)\n");
+      Serial.println("HEARTBEAT (Aktywny)\n");
       
       Serial.print("\nData:");
       Serial.print(g_dateStr);
@@ -145,13 +164,16 @@ void loop() {
       Serial.print(g_timeForLed);
       Serial.print("\nZewn: ");
       Serial.print(g_temp_external);
+      Serial.print("C, Wilg(Z): ");
+      Serial.print(g_humidity);
       Serial.print("C, Wewn: ");
       Serial.print(g_temp_internal);
       Serial.print("C, Namiot: ");
       Serial.print(g_temp_dht);
       Serial.print("C, Wilg(N): ");
       Serial.print(g_humidity_dht);
-      Serial.println("C");
+      Serial.print("%, Cisnienir(hPa): ");
+      Serial.print(g_pressure);
     }
   }
 }

@@ -9,6 +9,7 @@
 #include "LcdDisplay.h"
 #include "LedDisplay.h"
 #include "WeatherSensor.h"
+#include "DhtSensor.h"
 #include "Timer.h"
 
 enum class LogicLevel {
@@ -23,10 +24,17 @@ enum class SystemState {
   SLEEPING
 };
 
+// Dodajemy enum, aby wiedzieć, co wybudziło system
+enum class WakeUpSource {
+  NONE,
+  RTC_ALARM,
+  MANUAL_TOUCH
+};
+
 class PowerManager {
 public:
-  PowerManager(int powerPin, int interruptPin, LogicLevel logic); // Zostaje bez zmian
-  void begin(Clock& clock, LcdDisplay& lcd, LedDisplay& led, WeatherSensor& sensor);
+  PowerManager(int powerPin, int rtcAlarmPin, int manualWakeupPin);  
+  void begin(Clock& clock, LcdDisplay& lcd, LedDisplay& led, WeatherSensor& sensor, DhtSensor& dht);
   void update();
   bool isAwake();
   void resetActiveTimer();
@@ -42,7 +50,8 @@ private:
   void prepareToSleep();
 
   int _powerPin;
-  int _interruptPin;
+  int _rtcAlarmPin;
+  int _manualWakeupPin;
   SystemState _currentState;
   Timer _activeModeTimer;
   
@@ -53,6 +62,7 @@ private:
   LcdDisplay* _lcd;
   LedDisplay* _led;
   WeatherSensor* _sensor;
+  DhtSensor* _dht;
 };
 
 #endif
