@@ -13,6 +13,7 @@
 #include "PowerManager.h"
 #include "CommandHandler.h"
 #include "DebouncedButton.h" // Dołączamy nową klasę
+#include "SDCard.h"          // Dołączamy nową klasę
 #include "SensorData.h"      // Dołączamy strukturę danych
 
 const bool SLEEP_MODE_ENABLED = true;
@@ -64,26 +65,13 @@ DebouncedButton touchSensor(TOUCH_SENSOR_PIN, ActiveState::ACTIVE_HIGH);
 
 PowerManager powerManager(POWER_CONTROL_PIN, RTC_ALARM_PIN, TOUCH_SENSOR_PIN, DATA_PINS_TO_DEENERGIZE, DATA_PINS_COUNT);
 CommandHandler commandHandler(clock);
-
+SDCard sdCard(SD_CS_PIN);
 
 
 Timer sensorUpdateTimer(1000); 
 Timer ledUpdateTimer(500);      
 Timer heartbeatTimer(5000);
 Timer builtinLedTimer(1000); // Timer do mrugania wbudowaną diodą LED
-
-File dataFile; // Obiekt pliku do zapisu danych
-
-void logDataToSD() {
-  dataFile = SD.open("datalog.txt", FILE_WRITE);
-  if (dataFile) {
-    dataFile.println("Nowy odczyt..."); // Tutaj można dodać formatowanie danych z g_sensorData
-    dataFile.close(); // Bardzo ważne, aby zamknąć plik i zapisać dane!
-    Serial.println("Zapisano dane na karcie SD.");
-  } else {
-    Serial.println("Błąd otwarcia pliku datalog.txt do zapisu.");
-  }
-}
 
 SensorData g_sensorData; // Zastępujemy wiele zmiennych globalnych jedną strukturą
 
@@ -143,12 +131,7 @@ void setup() {
   }
 
   // Inicjalizacja karty SD (zawsze, niezależnie od trybu uśpienia)
-  Serial.print("Inicjalizacja karty SD...");
-  if (!SD.begin(SD_CS_PIN)) {
-    Serial.println(" nie powiodła się!");
-  } else {
-    Serial.println(" OK.");
-  }
+  sdCard.init();
 }
 
 void loop() {
@@ -194,7 +177,7 @@ void loop() {
       lcd.update(g_sensorData);
       
       // Zapisujemy dane na karcie SD przy każdym nowym odczycie
-      logDataToSD();
+      sdCard.logSensorData(g_sensorData, "datalog.txt");
     }
 
     if (ledUpdateTimer.isReady()) { 
