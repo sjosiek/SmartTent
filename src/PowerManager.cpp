@@ -7,8 +7,8 @@ volatile WakeUpSource g_wakeUpSource = WakeUpSource::NONE;
 void wakeUpISR_RTC() { g_wakeUpSource = WakeUpSource::RTC_ALARM; }
 void wakeUpISR_Touch() { g_wakeUpSource = WakeUpSource::MANUAL_TOUCH; }
 
-PowerManager::PowerManager(int powerPin, int rtcAlarmPin, int manualWakeupPin) 
-  : _powerPin(powerPin), _rtcAlarmPin(rtcAlarmPin), _manualWakeupPin(manualWakeupPin), _activeModeTimer(60000) {
+PowerManager::PowerManager(int powerPin, int rtcAlarmPin, int manualWakeupPin, const uint8_t* dataPins, uint8_t dataPinCount) 
+  : _powerPin(powerPin), _rtcAlarmPin(rtcAlarmPin), _manualWakeupPin(manualWakeupPin), _dataPins(dataPins), _dataPinCount(dataPinCount), _activeModeTimer(60000) {
     _currentState = SystemState::POWER_UP;
     // Logika zasilania peryferiów jest stała (sterowanie tranzystorem)
     // Zakładamy, że stan HIGH włącza zasilanie.
@@ -89,9 +89,22 @@ void PowerManager::powerUpPeripherals() {
   delay(200);
 }
 
+void PowerManager::deenergizeDataLines() {
+  Serial.println("De-energetyzacja linii danych w celu uniknięcia 'phantom power'...");
+  
+  // Iterujemy po tablicy pinów danych przekazanej w konstruktorze
+  // i ustawiamy każdy z nich jako wejście (stan wysokiej impedancji),
+  // aby nie mogły one ani dostarczać, ani pobierać prądu.
+  for (uint8_t i = 0; i < _dataPinCount; i++) {
+    pinMode(_dataPins[i], INPUT);
+  }
+}
+
 void PowerManager::powerDownPeripherals() {
   Serial.println("Odcinam zasilanie peryferiów...");
-  // ZMIANA: Używamy uniwersalnej zmiennej _offState
+  // KROK 1: De-energetyzacja linii danych, aby zapobiec zasilaniu "widmo".
+  deenergizeDataLines();
+  // KROK 2: Fizyczne odcięcie zasilania VCC za pomocą modułu MOSFET.
   digitalWrite(_powerPin, _offState);
 }
 
@@ -101,16 +114,20 @@ void PowerManager::prepareToSleep() {
   _lcd->noBacklight();
   powerDownPeripherals();
 
+  // KROK 1: Upewnij się, że flaga poprzedniego alarmu jest wyczyszczona.
+  // To kluczowe, aby pin SQW mógł ponownie przejść w stan wysoki i wygenerować
+  // nowe zbocze opadające przy następnym alarmie.
+  _clock->clearAlarm(1);
   DateTime now = _clock->getTime();
   // Ustawiamy alarm na 5 minut w przyszłość, zgodnie z komunikatem.
-  DateTime future(now + TimeSpan(0, 0, 5, 0));
+  DateTime future(now + TimeSpan(0, 0, 1, 0));
   // Używamy DS3231_A1_Date, aby alarm zadziałał o konkretnej dacie i godzinie.
   // Poprzedni tryb (DS3231_A1_Second) powodował, że alarm dzwonił co minutę,
   // gdy tylko sekundy się zgadzały, co nie było zamierzonym zachowaniem.
   if (!_clock->setAlarm1(future, DS3231_A1_Date)) {
     Serial.println("Błąd ustawiania alarmu!");
   }
-  Serial.println("Ustawiono alarm na za 5 minut. Dobranoc.");
+  Serial.println("Ustawiono alarm na za 1 minutę w przyszłość. Dobranoc.");
   delay(100); // Krótki delay na wszelki wypadek.
   Serial.flush(); // KLUCZOWA ZMIANA: Czekamy, aż wszystkie dane zostaną wysłane przez port szeregowy.
 }

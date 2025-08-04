@@ -7,7 +7,7 @@
 
 class WeatherSensor {
 public:
-  WeatherSensor();
+  WeatherSensor(uint8_t address = 0x76);
   bool init();
   void readData();
   float getTemperature();
@@ -16,6 +16,8 @@ public:
 
 private:
   Adafruit_BME280 bme;
+  uint8_t _address;
+  bool _isInitialized;
   float temperature;
   float humidity;
   float pressure;

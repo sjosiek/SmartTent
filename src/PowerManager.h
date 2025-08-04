@@ -33,7 +33,7 @@ enum class WakeUpSource {
 
 class PowerManager {
 public:
-  PowerManager(int powerPin, int rtcAlarmPin, int manualWakeupPin);  
+  PowerManager(int powerPin, int rtcAlarmPin, int manualWakeupPin, const uint8_t* dataPins, uint8_t dataPinCount);
   void begin(Clock& clock, LcdDisplay& lcd, LedDisplay& led, WeatherSensor& sensor, DhtSensor& dht);
   void update();
   bool isAwake();
@@ -48,10 +48,13 @@ private:
   void goToSleep();
   void handleWakeUp();
   void prepareToSleep();
+  void deenergizeDataLines();
 
   int _powerPin;
   int _rtcAlarmPin;
   int _manualWakeupPin;
+  const uint8_t* _dataPins;
+  uint8_t _dataPinCount;
   SystemState _currentState;
   Timer _activeModeTimer;
   

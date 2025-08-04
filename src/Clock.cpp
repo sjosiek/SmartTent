@@ -33,8 +33,22 @@ String Clock::formatTime(const DateTime& dt, bool withSeconds) {
   }
 }
 
+void Clock::configureForAlarm() {
+  // To jest kluczowy krok. Aby używać pinu SQW jako wyjścia przerwania,
+  // bit INTCN w rejestrze kontrolnym DS3231 musi być ustawiony.
+  // Biblioteka RTClib dostarcza do tego celu (nieco myląco nazwaną) opcję DS3231_OFF.
+  // Wywołanie writeSqwPinMode z tą wartością konfiguruje pin do pracy w trybie przerwania.
+  rtc.writeSqwPinMode(DS3231_OFF);
+}
+
 float Clock::getTemperature() {
-  return rtc.getTemperature();
+  float temp = rtc.getTemperature();
+  // Dodajemy warunek sprawdzający, czy odczyt jest prawidłowy.
+  // Niektóre biblioteki i czujniki w razie błędu zwracają -127.
+  if (temp <= INVALID_TEMP) {
+    return 0.0f; // Zwracamy bezpieczną wartość w razie błędu
+  }
+  return temp;
 }
 
 void Clock::adjust(const DateTime& dt) {

@@ -15,6 +15,7 @@ public:
   static String formatDate(const DateTime& dt);
   static String formatTime(const DateTime& dt, bool withSeconds = false);
 
+  void configureForAlarm();
   float getTemperature();
 
   // Metody opakowujące funkcje RTC dla lepszej hermetyzacji
@@ -25,6 +26,7 @@ public:
   void clearAlarm(uint8_t alarm_num);
 
 private:
+  static constexpr float INVALID_TEMP = -127.0f; // Wartość błędu zwracana przez niektóre czujniki
   RTC_DS3231 rtc;
 };
 
