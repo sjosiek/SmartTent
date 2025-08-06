@@ -14,9 +14,11 @@
 #include "CommandHandler.h"
 #include "DebouncedButton.h" // Dołączamy nową klasę
 #include "SDCard.h"          // Dołączamy nową klasę
+#include "Configuration.h"   // Dołączamy strukturę konfiguracyjną
+#include "SmoothServo.h"     // Dołączamy klasę serwomechanizmu
 #include "SensorData.h"      // Dołączamy strukturę danych
 
-const bool SLEEP_MODE_ENABLED = true;
+const bool SLEEP_MODE_ENABLED = false;
 
 
 #define RTC_ALARM_PIN 2         // Pin dla alarmu z RTC (Przerwanie 0) - SQW
@@ -29,6 +31,8 @@ const bool SLEEP_MODE_ENABLED = true;
 #define SPI_MOSI_PIN 51         // Sprzętowy pin MOSI dla SPI
 #define SPI_SCK_PIN 52          // Sprzętowy pin SCK dla SPI
 #define SD_CS_PIN 53            // Pin Chip Select dla karty SD
+// #define SERVO1_PIN A0           // Pin dla pierwszego serwa
+// #define SERVO2_PIN A1           // Pin dla drugiego serwa
 
 #define DHT_TYPE DHT11          // Typ czujnika DHT11
 
@@ -36,6 +40,21 @@ const bool SLEEP_MODE_ENABLED = true;
 #define LCD_COLS 20             // Liczba kolumn wyświetlacza
 #define LCD_ROWS 4              // Liczba wierszy wyświetlacza
 
+// --- Centralna Konfiguracja Serwomechanizmów ---
+struct ServoConfig {
+  uint8_t pin;
+  const char* name;
+};
+
+// const ServoConfig servoConfigs[] = {
+//   { SERVO1_PIN, "Wywietrznik" },
+//   { SERVO2_PIN, "Klapa" }
+//   // Możesz tu dodać więcej serw, np. { A2, "Drzwi" }
+// };
+
+const ServoConfig servoConfigs[] = {};
+
+const int SERVO_COUNT = sizeof(servoConfigs) / sizeof(servoConfigs[0]);
 // Definicja timeoutu dla magistrali I2C w mikrosekundach.
 // Zapobiega to zawieszeniu się programu, gdy urządzenie I2C nagle straci zasilanie.
 const uint32_t I2C_TIMEOUT_US = 25000; // 25000 mikrosekund = 25 milisekund
@@ -46,7 +65,9 @@ const uint8_t DATA_PINS_TO_DEENERGIZE[] = {
     DHT_PIN,            // DHT11
     LED_CLK_PIN,        // LED Display
     LED_DIO_PIN,        // LED Display
-    SPI_MISO_PIN, SPI_MOSI_PIN, SPI_SCK_PIN, SD_CS_PIN // SPI dla karty SD
+    SPI_MISO_PIN, SPI_MOSI_PIN, SPI_SCK_PIN, SD_CS_PIN, // SPI dla karty SD
+    // SERVO1_PIN, SERVO2_PIN // Piny serwomechanizmów
+    // UWAGA: Jeśli dodasz serwa, pamiętaj o dodaniu ich pinów tutaj!
 };
 const uint8_t DATA_PINS_COUNT = sizeof(DATA_PINS_TO_DEENERGIZE) / sizeof(DATA_PINS_TO_DEENERGIZE[0]);
 
@@ -64,16 +85,24 @@ LedDisplay led(LED_CLK_PIN, LED_DIO_PIN);         // LED
 DebouncedButton touchSensor(TOUCH_SENSOR_PIN, ActiveState::ACTIVE_HIGH);
 
 PowerManager powerManager(POWER_CONTROL_PIN, RTC_ALARM_PIN, TOUCH_SENSOR_PIN, DATA_PINS_TO_DEENERGIZE, DATA_PINS_COUNT);
-CommandHandler commandHandler(clock);
 SDCard sdCard(SD_CS_PIN);
+// Deklarujemy tablicę serw. Używamy "max(1, SERVO_COUNT)", aby uniknąć
+// niestandardowej tablicy o zerowej długości, gdy serwa są wyłączone.
+// Ten dodatkowy element nigdy nie będzie użyty, ponieważ pętle są chronione przez SERVO_COUNT.
+SmoothServo servos[max(1, SERVO_COUNT)];
+
+CommandHandler commandHandler(clock, sdCard, g_config, servos, SERVO_COUNT); // Przekazujemy tablicę do CommandHandler
 
 
-Timer sensorUpdateTimer(1000); 
+Timer sensorUpdateTimer(1000); // Domyślny interwał, zostanie nadpisany przez konfigurację
 Timer ledUpdateTimer(500);      
 Timer heartbeatTimer(5000);
 Timer builtinLedTimer(1000); // Timer do mrugania wbudowaną diodą LED
+Timer errorLedTimer(200);    // Szybszy timer do sygnalizacji błędu
+
 
 SensorData g_sensorData; // Zastępujemy wiele zmiennych globalnych jedną strukturą
+Configuration g_config;  // Globalny obiekt przechowujący konfigurację
 
 void setup() {
   pinMode(LED_BUILTIN, OUTPUT); // Inicjalizacja wbudowanej diody LED
@@ -132,20 +161,54 @@ void setup() {
 
   // Inicjalizacja karty SD (zawsze, niezależnie od trybu uśpienia)
   sdCard.init();
+
+  // Odczyt pliku konfiguracyjnego
+  if (sdCard.readConfiguration("config.txt", g_config)) {
+    Serial.println("Konfiguracja wczytana pomyślnie.");
+  } else {
+    Serial.println("Nie udało się wczytać konfiguracji, używam wartości domyślnych.");
+  }
+
+  // Zastosowanie wczytanej konfiguracji
+  powerManager.setActiveModeDuration(g_config.activeModeMinutes);
+  sensorUpdateTimer.setInterval(g_config.sensorUpdateIntervalMs);
+  led.init(g_config.ledBrightness);
+
+  // Inicjalizacja serwomechanizmów
+  for (int i = 0; i < SERVO_COUNT; i++) {
+    // Inicjalizujemy każde serwo na podstawie centralnej konfiguracji
+    // Można tu dodać logikę ustawiania różnych pozycji startowych, np. z pliku konfiguracyjnego
+    servos[i].begin(servoConfigs[i].pin, servoConfigs[i].name, 0);
+  }
 }
 
 void loop() {
   commandHandler.update(); // Sprawdzaj, czy przyszła komenda synchronizacji
 
   // Mruganie wbudowaną diodą LED jako "heartbeat" systemu
-  if (builtinLedTimer.isReady()) {
-    digitalWrite(LED_BUILTIN, !digitalRead(LED_BUILTIN));
+  if (sdCard.isOK()) {
+    // Normalny "heartbeat" systemu
+    if (builtinLedTimer.isReady()) {
+      digitalWrite(LED_BUILTIN, !digitalRead(LED_BUILTIN));
+    }
+  } else {
+    // Szybkie mruganie jako sygnalizacja błędu (np. pełna karta SD)
+    if (errorLedTimer.isReady()) {
+      digitalWrite(LED_BUILTIN, !digitalRead(LED_BUILTIN));
+    }
   }
 
   if (SLEEP_MODE_ENABLED) {
     powerManager.update();
   }
   
+  // Aktualizacja stanu serwomechanizmów (musi być wywoływana w każdej pętli)
+  for (int i = 0; i < SERVO_COUNT; i++) {
+    if (servos[i].update()) {
+      // Serwo jest w ruchu, można coś z tym zrobić, jeśli potrzeba
+    }
+  }
+
   if (!SLEEP_MODE_ENABLED || powerManager.isAwake()) {
     
     // Obsługa przycisku za pomocą nowej, czystej klasy
@@ -173,6 +236,14 @@ void loop() {
       g_sensorData.dateStr = Clock::formatDate(now);
       g_sensorData.timeForLcd = Clock::formatTime(now, true);
       g_sensorData.timeForLed = Clock::formatTime(now, false);
+      
+      // Zapisujemy pozycje pierwszych dwóch serw do wyświetlenia na LCD
+      // UWAGA: Ta część nadal jest "na sztywno" dla 2 serw z powodu ograniczeń wyświetlacza.
+      // Można to rozbudować o system przełączania ekranów.
+      
+      // g_sensorData.servo1_pos = (SERVO_COUNT > 0) ? servos[0].getCurrentPosition() : 0;
+      // g_sensorData.servo2_pos = (SERVO_COUNT > 1) ? servos[1].getCurrentPosition() : 0;
+      
 
       lcd.update(g_sensorData);
       
@@ -204,7 +275,13 @@ void loop() {
       Serial.print("C, Wilg(N): ");
       Serial.print(g_sensorData.hum_dht);
       Serial.print("%, Cisnienir(hPa): ");
-      Serial.print(g_sensorData.pressure_bme);
+      Serial.println(g_sensorData.pressure_bme, 2);
+      
+      for (int i = 0; i < SERVO_COUNT; i++) {
+        Serial.print("Servo"); Serial.print(i); Serial.print(": ");
+        Serial.print(servos[i].getCurrentPosition()); Serial.print(" deg  ");
+      }
+      Serial.println();
     }
   }
 }

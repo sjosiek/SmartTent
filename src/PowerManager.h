@@ -38,6 +38,7 @@ public:
   void update();
   bool isAwake();
   void resetActiveTimer();
+  void setActiveModeDuration(uint32_t minutes);
   
   // ZMIANA: Te metody stają się publiczne, aby można było ich użyć w setup()
   void powerUpPeripherals();

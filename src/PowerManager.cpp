@@ -110,7 +110,7 @@ void PowerManager::powerDownPeripherals() {
 
 void PowerManager::prepareToSleep() {
   _lcd->printSleepMessage();
-  delay(1000);
+  delay(3000);
   _lcd->noBacklight();
   powerDownPeripherals();
 

@@ -13,6 +13,8 @@ struct SensorData {
   float temp_rtc;
   float temp_dht;
   float hum_dht;
+  int servo1_pos;
+  int servo2_pos;
 };
 
 #endif

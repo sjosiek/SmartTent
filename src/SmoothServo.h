@@ -5,57 +5,73 @@
 #include <Arduino.h>
 
 class SmoothServo {
-public:
-    // Konstruktor
-    SmoothServo(uint8_t pin, uint8_t ledL, uint8_t ledR, String sName = "Servo", int minP = 0, int maxP = 180, uint8_t stepVal = 1, uint16_t delayMs = 20);
-
-    // Metody publiczne
-    void begin(int startPos = 90);
-    void update();
-    
-    void setPosition(int pos);
-    int getPosition();
-    
-    void calibrate();
-
-    void attachEncoder(int clk, int dt);
-    void attachJoystick(int pin, bool setAnalog = false);
-    void attachButtons(int leftPin, int rightPin);
-
 private:
-    // Metody prywatne
-    // void updateEncoder();
-    // void updateJoystick();
-    // void updateButtons();
-    // void updateEffects();
+    enum class ServoState {
+        IDLE,
+        MOVING,
+        CALIBRATING
+    };
+public:
+    SmoothServo(); // Domyślny konstruktor
+    // Konstruktor z bardziej opisowymi nazwami parametrów
+    SmoothServo(uint8_t pin, const char* name = "Servo");
+
+    // Dołącza serwo, ustawia jego parametry i pozycję startową
+    void begin(uint8_t pin, const char* name, int startPos = 90, int minAngle = 0, int maxAngle = 180);
+
+    // Ustawia pozycję docelową, do której serwo ma się przemieścić
+    void setTargetPosition(int target);
+
+    // Ustawia prędkość ruchu (opóźnienie między krokami w ms)
+    void setSpeed(uint16_t moveDelayMs);
+
+    // Ustawia wielkość każdego kroku ruchu
+    void setStepSize(uint8_t stepSize);
+
+    // Ta metoda powinna być wywoływana cyklicznie w głównej pętli loop()
+    // Obsługuje stopniowy ruch w kierunku pozycji docelowej.
+    // Zwraca true, jeśli serwo jest wciąż w ruchu.
+    bool update();
+
+    // Natychmiastowo przesuwa serwo do pozycji (omija płynny ruch)
+    void write(int position);
+
+    // Zwraca aktualną pozycję serwa
+    int getCurrentPosition() const;
+
+    // Zwraca pozycję docelową serwa
+    int getTargetPosition() const;
+
+    // Sprawdza, czy serwo dotarło do celu
+    bool hasReachedTarget() const;
+
+    // Zleca ruch o jeden krok w danym kierunku
     void moveLeft();
     void moveRight();
-    void controlAnalog(int val, int jPin);
-    // void blinkLED(uint8_t pin);
-    // void flashLED(uint8_t pin);
-    // void turnOnLED(uint8_t pin);
-    // void buzz();
 
-    // Zmienne członkowskie
+    // Rozpoczyna nieblokującą sekwencję kalibracji
+    void startCalibration();
+
+    // Sprawdza, czy serwo jest w trakcie kalibracji
+    bool isCalibrating() const;
+
+private:
     Servo servo;
     uint8_t pin;
-    int pos;
-    int minPos, maxPos;
-    uint8_t step;
+    const char* name;
+
+    int currentPos;
+    int targetPos;
+    int minAngle;
+    int maxAngle;
+
+    ServoState state;
+    uint8_t calibrationStep;
+    uint32_t calibrationWaitStartTime;
+
+    uint8_t stepSize;
     uint32_t lastMoveTime;
     uint16_t moveDelay;
-    uint8_t ledLeft, ledRight;
-    String servoName;
-    
-    int encoderClkPin, encoderDtPin, lastClk;
-    bool encoderAttached;
-
-    int joystickPin;
-    bool joystickAttached, setPositionFromAnalog;
-
-    int btnLeftPin, btnRightPin;
-    bool buttonsAttached;
 };
 
 #endif // SMOOTH_SERVO_H
-

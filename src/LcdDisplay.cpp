@@ -69,7 +69,7 @@ void LcdDisplay::update(const SensorData& data) {
   snprintf(buffer, sizeof(buffer), "Z: %4.1f%cC H: %3.0f%%  ", data.temp_bme, DEGREE_SYMBOL, data.hum_bme);
   lcd.print(buffer);
 
-  // Linia 3: Dane wewnętrzne (RTC) i ciśnienie (BME280)
+  // Linia 3: Aktualne pozycje serwomechanizmów
   lcd.setCursor(0, 3);
   // Zmieniono formatowanie ciśnienia, aby pokazywało 2 miejsca po przecinku.
   // Format został zacieśniony, aby zmieścić się w 20 kolumnach wyświetlacza.
