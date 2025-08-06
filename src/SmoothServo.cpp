@@ -16,7 +16,7 @@ static const int calibrationStepCount = sizeof(calibrationSequence) / sizeof(cal
 
 SmoothServo::SmoothServo() 
     : pin(0), name("Uninitialized"), currentPos(90), targetPos(90), minAngle(0), maxAngle(180),
-      state(ServoState::IDLE), calibrationStep(0), calibrationWaitStartTime(0), stepSize(1), moveDelay(20), lastMoveTime(0) {}
+      state(ServoState::IDLE), calibrationStep(0), calibrationWaitStartTime(0), stepSize(1), lastMoveTime(0), moveDelay(20) {}
 
 SmoothServo::SmoothServo(uint8_t pin, const char* name)
     : pin(pin),
@@ -29,8 +29,8 @@ SmoothServo::SmoothServo(uint8_t pin, const char* name)
       calibrationStep(0),
       calibrationWaitStartTime(0),
       stepSize(1),
-      moveDelay(20),
-      lastMoveTime(0) {}
+      lastMoveTime(0),
+      moveDelay(20) {}
 
 void SmoothServo::begin(uint8_t pin, const char* name, int startPos, int minAngle, int maxAngle) {
     this->pin = pin;
@@ -126,7 +126,8 @@ void SmoothServo::startCalibration() {
     calibrationStep = 0;
     calibrationWaitStartTime = 0;
     targetPos = constrain(calibrationSequence[0].position, minAngle, maxAngle);
-    Serial.println("Rozpoczynam kalibrację serwa...");
+    Serial.print("Rozpoczynam kalibrację serwa: ");
+    Serial.println(name);
 }
 
 bool SmoothServo::isCalibrating() const { return state == ServoState::CALIBRATING; }
