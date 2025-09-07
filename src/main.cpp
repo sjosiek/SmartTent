@@ -17,8 +17,51 @@
 #include "Configuration.h"   // Dołączamy strukturę konfiguracyjną
 #include "SmoothServo.h"     // Dołączamy klasę serwomechanizmu
 #include "SensorData.h"      // Dołączamy strukturę danych
+#include "SunTracker.h"      // SUnTracker
 
 const bool SLEEP_MODE_ENABLED = false;
+
+constexpr int HORIZONTAL_SERVO_PIN = 9; //poziome
+constexpr int VERTICAL_SERVO_PIN = 10;  //pionowe
+constexpr int LDR_TOP_LEFT_PIN = A0;
+constexpr int LDR_TOP_RIGHT_PIN = A1;
+constexpr int LDR_DOWN_LEFT_PIN = A2;
+constexpr int LDR_DOWN_RIGHT_PIN = A3;
+constexpr int JOYSTICK_X_PIN = A4; // Oś X joysticka
+constexpr int JOYSTICK_Y_PIN = A5; // Oś Y joysticka
+constexpr int JOYSTICK_SW_PIN = 35; // Przycisk joysticka
+
+// --- Konfiguracja działania trackera---
+const SunTrackerPins trackerPins = {
+    .horizontalServoPin = HORIZONTAL_SERVO_PIN,
+    .verticalServoPin = VERTICAL_SERVO_PIN,
+    .ldrTopLeftPin = LDR_TOP_LEFT_PIN,
+    .ldrTopRightPin = LDR_TOP_RIGHT_PIN,
+    .ldrDownLeftPin = LDR_DOWN_LEFT_PIN,
+    .ldrDownRightPin = LDR_DOWN_RIGHT_PIN,
+    .joystickXPin = JOYSTICK_X_PIN,
+    .joystickYPin = JOYSTICK_Y_PIN,
+    .joystickSwPin = JOYSTICK_SW_PIN
+};
+
+const SunTrackerConfig trackerConfig = {
+    .servoVMinAngle = 10,
+    .servoVMaxAngle = 85,
+    .servoHMinAngle = 5,
+    .servoHMaxAngle = 175,
+    .performLdrCalibration = true,
+    .performServoCalibration = false,
+    .performInitialSearch = false,
+    .useJoystick = true,
+    .usePotentiometers = false,
+    .ldrSensorsConnected = true,
+    .enableServoMovement = false,
+    .defaultServoSpeed = 80,
+    .defaultTolerance = 20,
+    .runningUpdateIntervalMs = 1000 // 5 minut
+};
+
+
 
 
 #define RTC_ALARM_PIN 2         // Pin dla alarmu z RTC (Przerwanie 0) - SQW
@@ -73,6 +116,8 @@ const uint8_t DATA_PINS_COUNT = sizeof(DATA_PINS_TO_DEENERGIZE) / sizeof(DATA_PI
 
 
 //Inicjalizacja modułów
+
+SunTracker sunTracker(trackerPins, trackerConfig);  //SUnTracker
 
 Clock clock;                   // RTC
 DhtSensor dhtSensor(DHT_PIN, DHT_TYPE);          // DHT11
@@ -156,6 +201,10 @@ void setup() {
     Serial.println("Wyświetlacz LED zainicjalizowany.");
     
     lcd.printWelcomeMessage();
+
+    Serial.println("SunTracker zainicjalizowany.");
+
+    sunTracker.begin();
     
   }
 
@@ -277,10 +326,8 @@ void loop() {
       Serial.print("%, Cisnienir(hPa): ");
       Serial.println(g_sensorData.pressure_bme, 2);
       
-      for (int i = 0; i < SERVO_COUNT; i++) {
-        Serial.print("Servo"); Serial.print(i); Serial.print(": ");
-        Serial.print(servos[i].getCurrentPosition()); Serial.print(" deg  ");
-      }
+      sunTracker.update();
+      
       Serial.println();
     }
   }
