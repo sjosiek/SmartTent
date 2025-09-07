@@ -10,7 +10,10 @@
             "includePath": [
                 "C:/PRIV/DEV/SmartTent/include",
                 "C:/PRIV/DEV/SmartTent/src",
+                "C:/Users/sebastian.josiek/.platformio/packages/framework-arduino-avr/libraries/EEPROM/src",
                 "C:/PRIV/DEV/SmartTent/lib/TM1637",
+                "C:/PRIV/DEV/SmartTent/.pio/libdeps/megaatmega2560/Encoder",
+                "C:/PRIV/DEV/SmartTent/.pio/libdeps/megaatmega2560/Encoder/utility",
                 "C:/PRIV/DEV/SmartTent/.pio/libdeps/megaatmega2560/SD/src",
                 "C:/PRIV/DEV/SmartTent/.pio/libdeps/megaatmega2560/Servo/src",
                 "C:/PRIV/DEV/SmartTent/.pio/libdeps/megaatmega2560/DHT sensor library",
@@ -23,7 +26,6 @@
                 "C:/Users/sebastian.josiek/.platformio/packages/framework-arduino-avr/libraries/Wire/src",
                 "C:/Users/sebastian.josiek/.platformio/packages/framework-arduino-avr/cores/arduino",
                 "C:/Users/sebastian.josiek/.platformio/packages/framework-arduino-avr/variants/mega",
-                "C:/Users/sebastian.josiek/.platformio/packages/framework-arduino-avr/libraries/EEPROM/src",
                 "C:/Users/sebastian.josiek/.platformio/packages/framework-arduino-avr/libraries/HID/src",
                 "C:/Users/sebastian.josiek/.platformio/packages/framework-arduino-avr/libraries/SoftwareSerial/src",
                 ""
@@ -33,7 +35,10 @@
                 "path": [
                     "C:/PRIV/DEV/SmartTent/include",
                     "C:/PRIV/DEV/SmartTent/src",
+                    "C:/Users/sebastian.josiek/.platformio/packages/framework-arduino-avr/libraries/EEPROM/src",
                     "C:/PRIV/DEV/SmartTent/lib/TM1637",
+                    "C:/PRIV/DEV/SmartTent/.pio/libdeps/megaatmega2560/Encoder",
+                    "C:/PRIV/DEV/SmartTent/.pio/libdeps/megaatmega2560/Encoder/utility",
                     "C:/PRIV/DEV/SmartTent/.pio/libdeps/megaatmega2560/SD/src",
                     "C:/PRIV/DEV/SmartTent/.pio/libdeps/megaatmega2560/Servo/src",
                     "C:/PRIV/DEV/SmartTent/.pio/libdeps/megaatmega2560/DHT sensor library",
@@ -46,7 +51,6 @@
                     "C:/Users/sebastian.josiek/.platformio/packages/framework-arduino-avr/libraries/Wire/src",
                     "C:/Users/sebastian.josiek/.platformio/packages/framework-arduino-avr/cores/arduino",
                     "C:/Users/sebastian.josiek/.platformio/packages/framework-arduino-avr/variants/mega",
-                    "C:/Users/sebastian.josiek/.platformio/packages/framework-arduino-avr/libraries/EEPROM/src",
                     "C:/Users/sebastian.josiek/.platformio/packages/framework-arduino-avr/libraries/HID/src",
                     "C:/Users/sebastian.josiek/.platformio/packages/framework-arduino-avr/libraries/SoftwareSerial/src",
                     ""
