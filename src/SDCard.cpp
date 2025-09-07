@@ -12,9 +12,9 @@ bool SDCard::init() {
   _writeErrorOccurred = false;
 
   if (_isInitialized) {
-    Serial.println("Karta SD zainicjalizowana pomyślnie.");
+    Serial.println(F("Karta SD zainicjalizowana pomyślnie."));
   } else {
-    Serial.println("Błąd inicjalizacji karty SD!");
+    Serial.println(F("Błąd inicjalizacji karty SD!"));
   }
   return _isInitialized;
 }
@@ -32,7 +32,7 @@ void SDCard::logSensorData(const SensorData& data, const char* filename) {
       if (dataFile) {
         dataFile.println("Date|Time|Temp_BME|Hum_BME|Pressure|Temp_RTC|Temp_DHT|Hum_DHT");
         dataFile.close();
-        Serial.println("Utworzono nowy plik logu z nagłówkiem CSV.");
+        Serial.println(F("Utworzono nowy plik logu z nagłówkiem CSV."));
       }
   }
 
@@ -49,7 +49,7 @@ void SDCard::logSensorData(const SensorData& data, const char* filename) {
   } else {
     // Jeśli nie można otworzyć pliku do zapisu, prawdopodobnie karta jest pełna lub uszkodzona.
     _writeErrorOccurred = true;
-    Serial.println("Błąd otwarcia pliku logu do zapisu.");
+    Serial.println(F("Błąd otwarcia pliku logu do zapisu."));
   }
 }
 
@@ -60,12 +60,12 @@ bool SDCard::readConfiguration(const char* filename, Configuration& config) {
 
   File configFile = SD.open(filename, FILE_READ);
   if (!configFile) {
-    Serial.print("Nie można otworzyć pliku konfiguracyjnego: ");
+    Serial.print(F("Nie można otworzyć pliku konfiguracyjnego: "));
     Serial.println(filename);
     return false;
   }
 
-  Serial.println("Odczytuję plik konfiguracyjny...");
+  Serial.println(F("Odczytuję plik konfiguracyjny..."));
   while (configFile.available()) {
     String line = configFile.readStringUntil('\n');
     line.trim();
@@ -101,7 +101,7 @@ bool SDCard::writeConfiguration(const Configuration& config, const char* filenam
 
   File configFile = SD.open(filename, FILE_WRITE);
   if (!configFile) {
-    Serial.print("Nie można utworzyć pliku konfiguracyjnego do zapisu: ");
+    Serial.print(F("Nie można utworzyć pliku konfiguracyjnego do zapisu: "));
     Serial.println(filename);
     _writeErrorOccurred = true; // Ustawiamy flagę błędu
     return false;
@@ -114,6 +114,6 @@ bool SDCard::writeConfiguration(const Configuration& config, const char* filenam
   configFile.print("led_brightness="); configFile.println(config.ledBrightness);
 
   configFile.close();
-  Serial.println("Konfiguracja została pomyślnie zapisana na karcie SD.");
+  Serial.println(F("Konfiguracja została pomyślnie zapisana na karcie SD."));
   return true;
 }

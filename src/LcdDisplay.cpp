@@ -18,11 +18,11 @@ bool LcdDisplay::checkAndInit() {
     // Urządzenie jest obecne, możemy je bezpiecznie zainicjować.
     lcd.init();
     lcd.backlight();
-    Serial.println("LCD I2C check OK. Inicjalizacja pomyślna.");
+    Serial.println(F("LCD I2C check OK. Inicjalizacja pomyślna."));
     return true;
   } else {
     // Urządzenie nie odpowiada.
-    Serial.println("BŁĄD: Nie znaleziono wyświetlacza LCD na adresie I2C.");
+    Serial.println(F("BŁĄD: Nie znaleziono wyświetlacza LCD na adresie I2C."));
     return false;
   }
 }

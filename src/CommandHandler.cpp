@@ -10,11 +10,13 @@ void CommandHandler::update() {
   if (Serial.available() > 0) {
     String command = Serial.readStringUntil('\n');
     command.trim();
-    
-    Serial.println("Odebrano z portu szeregowego: \"" + command + "\"");
+
+    Serial.print(F("Odebrano z portu szeregowego: \""));
+    Serial.print(command);
+    Serial.println(F("\""));
 
     if (command.startsWith("TIME:")) {
-      Serial.println("Rozpoznano komendę synchronizacji czasu.");
+      Serial.println(F("Rozpoznano komendę synchronizacji czasu."));
       
       // Oczekiwany format: TIME:YYYY-MM-DD,HH:MM:SS
       String payload = command.substring(5);
@@ -30,14 +32,15 @@ void CommandHandler::update() {
       // Ustaw czas w RTC, używając wskaźnika do obiektu Clock
       _clock->adjust(DateTime(year, month, day, hour, minute, second));
 
-      String confirmation = "OK: Czas zsynchronizowany do " + payload;
+      String confirmation = F("OK: Czas zsynchronizowany do ");
+      confirmation += payload;
       Serial.println(confirmation);
     } else if (command == "SAVE_CONFIG") {
-      Serial.println("Rozpoznano komendę zapisu konfiguracji.");
+      Serial.println(F("Rozpoznano komendę zapisu konfiguracji."));
       if (_sdCard->writeConfiguration(*_config, "config.txt")) {
-        Serial.println("OK: Konfiguracja zapisana.");
+        Serial.println(F("OK: Konfiguracja zapisana."));
       } else {
-        Serial.println("BŁĄD: Nie udało się zapisać konfiguracji.");
+        Serial.println(F("BŁĄD: Nie udało się zapisać konfiguracji."));
       }
     } else if (command.startsWith("SERVO:")) {
       // Format komendy: SERVO:<index>:<pozycja>, np. "SERVO:0:90"
@@ -49,13 +52,13 @@ void CommandHandler::update() {
         int position = command.substring(secondColon + 1).toInt();
 
         if (servoIndex >= 0 && servoIndex < _servoCount) {
-          Serial.print("Ustawiam pozycję docelową dla SERVO");
+          Serial.print(F("Ustawiam pozycję docelową dla SERVO"));
           Serial.print(servoIndex);
-          Serial.print(" na: ");
+          Serial.print(F(" na: "));
           Serial.println(position);
           _servos[servoIndex].setTargetPosition(position);
         } else {
-          Serial.println("BŁĄD: Nieprawidłowy indeks serwa.");
+          Serial.println(F("BŁĄD: Nieprawidłowy indeks serwa."));
         }
       }
     } else if (command.startsWith("SERVO_MOVE:")) {
@@ -74,10 +77,10 @@ void CommandHandler::update() {
               } else if (direction == "RIGHT") {
                   _servos[servoIndex].moveRight();
               } else {
-                  Serial.println("BŁĄD: Nieprawidłowy kierunek (użyj LEFT lub RIGHT).");
+                  Serial.println(F("BŁĄD: Nieprawidłowy kierunek (użyj LEFT lub RIGHT)."));
               }
           } else {
-              Serial.println("BŁĄD: Nieprawidłowy indeks serwa.");
+              Serial.println(F("BŁĄD: Nieprawidłowy indeks serwa."));
           }
       }
     } else if (command == "CALIBRATE_SERVOS") {

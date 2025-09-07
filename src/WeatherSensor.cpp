@@ -37,7 +37,7 @@ void WeatherSensor::readData() {
   // Jeśli którykolwiek odczyt to NaN, oznacza to błąd komunikacji.
   // Oznaczamy czujnik jako wymagający re-inicjalizacji.
   if (isnan(temperature) || isnan(humidity) || isnan(pressure)) {
-    Serial.println("Błąd odczytu z BME280, utracono połączenie.");
+    Serial.println(F("Błąd odczytu z BME280, utracono połączenie."));
     _isInitialized = false;
     // Zerujemy dane, aby nie wyświetlać starych, nieaktualnych wartości.
     temperature = 0.0f;

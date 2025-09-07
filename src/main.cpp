@@ -152,32 +152,32 @@ Timer errorLedTimer(200);    // Szybszy timer do sygnalizacji błędu
 void setup() {
   pinMode(LED_BUILTIN, OUTPUT); // Inicjalizacja wbudowanej diody LED
   Serial.begin(9600);
-  Serial.println("\nBooting SmartTent System...");
+  Serial.println(F("\nBooting SmartTent System..."));
 
   // Ustawienie timeoutu dla magistrali I2C, aby uniknąć zawieszenia programu.
   Wire.setWireTimeout(I2C_TIMEOUT_US, true);
 
   if (!clock.init()) {
-    Serial.println("Błąd inicjalizacji zegara RTC!");
+    Serial.println(F("Błąd inicjalizacji zegara RTC!"));
     //while (1); // Zatrzymanie programu, krytyczny błąd. Odkomentuj w wersji finalnej.
   } else {
-    Serial.println("Zegar RTC OK.");
+    Serial.println(F("Zegar RTC OK."));
     clock.configureForAlarm(); // KONIECZNIE: Konfigurujemy pin SQW do pracy jako przerwanie.
     // Na wszelki wypadek czyścimy flagę alarmu, gdyby system został zresetowany w trakcie jego trwania.
     clock.clearAlarm(1);
     // Sprawdzamy, czy zegar nie stracił zasilania i nie zresetował się do domyślnej daty
     if (clock.lostPower()) {
-      Serial.println("RTC stracił zasilanie! Ustawiam czas na czas kompilacji.");
+      Serial.println(F("RTC stracił zasilanie! Ustawiam czas na czas kompilacji."));
       // Poniższa linia ustawi czas na datę i godzinę kompilacji tego szkicu
       clock.adjust(DateTime(F(__DATE__), F(__TIME__)));
     }
   }
     
   if (SLEEP_MODE_ENABLED) {
-    Serial.println("Tryb oszczędzania energii WŁĄCZONY.");
+    Serial.println(F("Tryb oszczędzania energii WŁĄCZONY."));
     powerManager.begin(clock, lcd, led, sensor, dhtSensor);
   } else {
-    Serial.println("Tryb oszczędzania energii WYŁĄCZONY. System będzie działał w trybie ciągłym.");
+    Serial.println(F("Tryb oszczędzania energii WYŁĄCZONY. System będzie działał w trybie ciągłym."));
     pinMode(POWER_CONTROL_PIN, OUTPUT);
 
     // ZMIANA: Używamy teraz publicznej metody z PowerManagera do włączenia zasilania
@@ -185,20 +185,20 @@ void setup() {
 
     // Inicjalizujemy resztę modułów
     if (!sensor.init()) {
-      Serial.println("Błąd inicjalizacji czujnika BME280!");
+      Serial.println(F("Błąd inicjalizacji czujnika BME280!"));
     } else {
-      Serial.println("Czujnik BME280 OK.");
+      Serial.println(F("Czujnik BME280 OK."));
     }
 
     dhtSensor.init();
-    Serial.println("Czujnik DHT11 zainicjalizowany.");
+    Serial.println(F("Czujnik DHT11 zainicjalizowany."));
 
    
     lcd.init(); 
-    Serial.println("Wyświetlacz LCD zainicjalizowany.");
+    Serial.println(F("Wyświetlacz LCD zainicjalizowany."));
 
     led.init(10);
-    Serial.println("Wyświetlacz LED zainicjalizowany.");
+    Serial.println(F("Wyświetlacz LED zainicjalizowany."));
     
     lcd.printWelcomeMessage();
 
@@ -213,9 +213,9 @@ void setup() {
 
   // Odczyt pliku konfiguracyjnego
   if (sdCard.readConfiguration("config.txt", g_config)) {
-    Serial.println("Konfiguracja wczytana pomyślnie.");
+    Serial.println(F("Konfiguracja wczytana pomyślnie."));
   } else {
-    Serial.println("Nie udało się wczytać konfiguracji, używam wartości domyślnych.");
+    Serial.println(F("Nie udało się wczytać konfiguracji, używam wartości domyślnych."));
   }
 
   // Zastosowanie wczytanej konfiguracji
@@ -305,30 +305,30 @@ void loop() {
     }
     
     if (heartbeatTimer.isReady()) { 
-      Serial.println("\nHEARTBEAT (Aktywny)\n");
+      Serial.println(F("\nHEARTBEAT (Aktywny)\n"));
       
-      Serial.print("\nData:");
+      Serial.print(F("\nData:"));
       Serial.print(g_sensorData.dateStr);
-      Serial.print("\nCzas:");
+      Serial.print(F("\nCzas:"));
       Serial.print(g_sensorData.timeForLcd);
-      Serial.print("\nCzas LED:");
+      Serial.print(F("\nCzas LED:"));
       Serial.print(g_sensorData.timeForLed);
-      Serial.print("\nZewn: ");
+      Serial.print(F("\nZewn: "));
       Serial.print(g_sensorData.temp_bme);
-      Serial.print("C, Wilg(Z): ");
+      Serial.print(F("C, Wilg(Z): "));
       Serial.print(g_sensorData.hum_bme);
-      Serial.print("C, Wewn: ");
+      Serial.print(F("C, Wewn: "));
       Serial.print(g_sensorData.temp_rtc);
-      Serial.print("C, Namiot: ");
+      Serial.print(F("C, Namiot: "));
       Serial.print(g_sensorData.temp_dht);
-      Serial.print("C, Wilg(N): ");
+      Serial.print(F("C, Wilg(N): "));
       Serial.print(g_sensorData.hum_dht);
-      Serial.print("%, Cisnienir(hPa): ");
+      Serial.print(F("%, Cisnienir(hPa): "));
       Serial.println(g_sensorData.pressure_bme, 2);
       
       sunTracker.update();
       
-      Serial.println();
+      Serial.println(); // Pusta linia dla czytelności
     }
   }
 }

@@ -37,7 +37,7 @@ bool PowerManager::isAwake() {
 
 void PowerManager::resetActiveTimer() {
   if (isAwake()) {
-    Serial.println("Reset timera aktywności...");
+    Serial.println(F("Reset timera aktywności..."));
     _activeModeTimer.reset();
   }
 }
@@ -45,17 +45,17 @@ void PowerManager::resetActiveTimer() {
 void PowerManager::update() {
   switch (_currentState) {
     case SystemState::POWER_UP:
-      Serial.println("Stan: POWER_UP");
+      Serial.println(F("Stan: POWER_UP"));
       powerUpPeripherals();
       _lcd->init();
       _led->init(10);
       if (!_sensor->init()) {
-        Serial.println("Błąd inicjalizacji czujnika BME280 w PowerManager!");
+        Serial.println(F("Błąd inicjalizacji czujnika BME280 w PowerManager!"));
       } else {
-        Serial.println("Czujnik BME280 OK (PowerManager).");
+        Serial.println(F("Czujnik BME280 OK (PowerManager)."));
       }
       _dht->init();
-      Serial.println("Czujnik DHT11 zainicjalizowany (PowerManager).");
+      Serial.println(F("Czujnik DHT11 zainicjalizowany (PowerManager)."));
       _lcd->printWelcomeMessage();
       delay(2000);
       _activeModeTimer.reset();
@@ -64,13 +64,13 @@ void PowerManager::update() {
 
     case SystemState::ACTIVE:
       if (_activeModeTimer.isReady()) {
-        Serial.println("Czas aktywności minął. Przygotowuję się do uśpienia.");
+        Serial.println(F("Czas aktywności minął. Przygotowuję się do uśpienia."));
         _currentState = SystemState::PREPARE_SLEEP;
       }
       break;
 
     case SystemState::PREPARE_SLEEP:
-      Serial.println("Stan: PREPARE_SLEEP");
+      Serial.println(F("Stan: PREPARE_SLEEP"));
       prepareToSleep();
       _currentState = SystemState::SLEEPING;
       break;
@@ -83,14 +83,14 @@ void PowerManager::update() {
 }
 
 void PowerManager::powerUpPeripherals() {
-  Serial.println("Włączam zasilanie peryferiów...");
+  Serial.println(F("Włączam zasilanie peryferiów..."));
   // ZMIANA: Używamy uniwersalnej zmiennej _onState
   digitalWrite(_powerPin, _onState);
   delay(200);
 }
 
 void PowerManager::deenergizeDataLines() {
-  Serial.println("De-energetyzacja linii danych w celu uniknięcia 'phantom power'...");
+  Serial.println(F("De-energetyzacja linii danych w celu uniknięcia 'phantom power'..."));
   
   // Iterujemy po tablicy pinów danych przekazanej w konstruktorze
   // i ustawiamy każdy z nich jako wejście (stan wysokiej impedancji),
@@ -101,7 +101,7 @@ void PowerManager::deenergizeDataLines() {
 }
 
 void PowerManager::powerDownPeripherals() {
-  Serial.println("Odcinam zasilanie peryferiów...");
+  Serial.println(F("Odcinam zasilanie peryferiów..."));
   // KROK 1: De-energetyzacja linii danych, aby zapobiec zasilaniu "widmo".
   deenergizeDataLines();
   // KROK 2: Fizyczne odcięcie zasilania VCC za pomocą modułu MOSFET.
@@ -125,9 +125,9 @@ void PowerManager::prepareToSleep() {
   // Poprzedni tryb (DS3231_A1_Second) powodował, że alarm dzwonił co minutę,
   // gdy tylko sekundy się zgadzały, co nie było zamierzonym zachowaniem.
   if (!_clock->setAlarm1(future, DS3231_A1_Date)) {
-    Serial.println("Błąd ustawiania alarmu!");
+    Serial.println(F("Błąd ustawiania alarmu!"));
   }
-  Serial.println("Ustawiono alarm na za 1 minutę w przyszłość. Dobranoc.");
+  Serial.println(F("Ustawiono alarm na za 1 minutę w przyszłość. Dobranoc."));
   delay(100); // Krótki delay na wszelki wypadek.
   Serial.flush(); // KLUCZOWA ZMIANA: Czekamy, aż wszystkie dane zostaną wysłane przez port szeregowy.
 }
@@ -157,10 +157,10 @@ void PowerManager::handleWakeUp() {
   if (g_wakeUpSource != WakeUpSource::NONE) {
     if (g_wakeUpSource == WakeUpSource::RTC_ALARM) {
       _clock->clearAlarm(1);
-      Serial.println("Obudził mnie ALARM. Uruchamiam system na cykl pracy.");
+      Serial.println(F("Obudził mnie ALARM. Uruchamiam system na cykl pracy."));
       _currentState = SystemState::POWER_UP;
     } else if (g_wakeUpSource == WakeUpSource::MANUAL_TOUCH) {
-      Serial.println("Obudził mnie DOTYK. Uruchamiam system.");
+      Serial.println(F("Obudził mnie DOTYK. Uruchamiam system."));
       _currentState = SystemState::POWER_UP;
     }
   }

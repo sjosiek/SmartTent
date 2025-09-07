@@ -150,7 +150,7 @@ void SmoothServo::startCalibration() {
     calibrationStep = 0;
     calibrationWaitStartTime = 0;
     targetPos = constrain(calibrationSequence[0].position, minAngle, maxAngle);
-    Serial.print("Rozpoczynam kalibrację serwa: ");
+    Serial.print(F("Rozpoczynam kalibrację serwa: "));
     Serial.println(name);
 }
 
