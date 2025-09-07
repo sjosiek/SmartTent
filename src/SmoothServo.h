@@ -48,6 +48,13 @@ public:
     // Zleca ruch o jeden krok w danym kierunku
     void moveLeft();
     void moveRight();
+    void moveUp();
+    void moveDown();
+    // Odwrócone aliasy ruchu
+    void reverseMoveLeft();
+    void reverseMoveRight();
+    void reverseMoveUp();
+    void reverseMoveDown();
 
     // Rozpoczyna nieblokującą sekwencję kalibracji
     void startCalibration();

@@ -9,7 +9,7 @@ struct CalibrationStep {
 
 static const CalibrationStep calibrationSequence[] = {
     {0, 2000}, {45, 1000}, {90, 1000}, {135, 1000}, {180, 2000},
-    {135, 1000}, {90, 1000}, {45, 1000}, {0, 1000}
+    {135, 1000}, {90, 1000}, {45, 1000}, {0, 1000}, {45, 1000}, {90, 1000}
 };
 static const int calibrationStepCount = sizeof(calibrationSequence) / sizeof(calibrationSequence[0]);
 
@@ -119,6 +119,30 @@ void SmoothServo::moveLeft() {
 
 void SmoothServo::moveRight() {
     setTargetPosition(currentPos + stepSize);
+}
+
+void SmoothServo::moveUp() {
+    moveLeft(); // Alias dla ruchu w górę (zmniejszanie kąta)
+}
+
+void SmoothServo::moveDown() {
+    moveRight(); // Alias dla ruchu w dół (zwiększanie kąta)
+}
+
+void SmoothServo::reverseMoveLeft() {
+    moveRight(); // Odwrócony ruch w lewo to tak naprawdę ruch w prawo
+}
+
+void SmoothServo::reverseMoveRight() {
+    moveLeft(); // Odwrócony ruch w prawo to tak naprawdę ruch w lewo
+}
+
+void SmoothServo::reverseMoveUp() {
+    moveDown(); // Odwrócony ruch w górę to tak naprawdę ruch w dół
+}
+
+void SmoothServo::reverseMoveDown() {
+    moveUp(); // Odwrócony ruch w dół to tak naprawdę ruch w górę
 }
 
 void SmoothServo::startCalibration() {
