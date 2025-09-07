@@ -135,19 +135,19 @@ SDCard sdCard(SD_CS_PIN);
 // niestandardowej tablicy o zerowej długości, gdy serwa są wyłączone.
 // Ten dodatkowy element nigdy nie będzie użyty, ponieważ pętle są chronione przez SERVO_COUNT.
 SmoothServo servos[max(1, SERVO_COUNT)];
-
+ 
+SensorData g_sensorData; // Zastępujemy wiele zmiennych globalnych jedną strukturą
+Configuration g_config;  // Globalny obiekt przechowujący konfigurację
+ 
 CommandHandler commandHandler(clock, sdCard, g_config, servos, SERVO_COUNT); // Przekazujemy tablicę do CommandHandler
-
-
+ 
+ 
 Timer sensorUpdateTimer(1000); // Domyślny interwał, zostanie nadpisany przez konfigurację
 Timer ledUpdateTimer(500);      
 Timer heartbeatTimer(5000);
 Timer builtinLedTimer(1000); // Timer do mrugania wbudowaną diodą LED
 Timer errorLedTimer(200);    // Szybszy timer do sygnalizacji błędu
 
-
-SensorData g_sensorData; // Zastępujemy wiele zmiennych globalnych jedną strukturą
-Configuration g_config;  // Globalny obiekt przechowujący konfigurację
 
 void setup() {
   pinMode(LED_BUILTIN, OUTPUT); // Inicjalizacja wbudowanej diody LED

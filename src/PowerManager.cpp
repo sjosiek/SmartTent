@@ -165,3 +165,9 @@ void PowerManager::handleWakeUp() {
     }
   }
 }
+
+void PowerManager::setActiveModeDuration(uint32_t minutes) {
+  // Konwertujemy minuty na milisekundy i ustawiamy interwał timera
+  uint32_t durationMs = minutes * 60 * 1000;
+  _activeModeTimer.setInterval(durationMs);
+}
