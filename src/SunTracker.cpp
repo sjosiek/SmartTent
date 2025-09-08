@@ -29,8 +29,8 @@ SunTracker::SunTracker(const SunTrackerPins& pins, const SunTrackerConfig& confi
 void SunTracker::begin() {
     horizontalServo.begin(pins.horizontalServoPin, "Horizontal", 90, config.servoHMinAngle, config.servoHMaxAngle);
     verticalServo.begin(pins.verticalServoPin, "Vertical", 90, config.servoVMinAngle, config.servoVMaxAngle);
-    horizontalServo.setStepSize(1);
-    verticalServo.setStepSize(1);
+    horizontalServo.setStepSize(5);
+    verticalServo.setStepSize(5);
 
     Serial.println(F("\n--- Sun Tracker v2.0 Library ---"));
 
@@ -247,7 +247,7 @@ void SunTracker::handleStateMachine() {
                 // Czekaj na upłynięcie interwału aktualizacji
                 if (millis() - lastRunningUpdateTime >= config.runningUpdateIntervalMs) {
                     lastRunningUpdateTime = millis(); // Zresetuj timer na następny interwał
-                    Serial.println(F("Sprawdzam pozycję słońca..."));
+                    Serial.println(F("Odczytuję dane z LDR"));
 
                     int raw_tl = analogRead(pins.ldrTopLeftPin);
                     int raw_tr = analogRead(pins.ldrTopRightPin);

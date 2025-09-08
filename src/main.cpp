@@ -23,9 +23,9 @@ const bool SLEEP_MODE_ENABLED = false;
 
 constexpr int HORIZONTAL_SERVO_PIN = 9; //poziome
 constexpr int VERTICAL_SERVO_PIN = 10;  //pionowe
-constexpr int LDR_TOP_LEFT_PIN = A0;
-constexpr int LDR_TOP_RIGHT_PIN = A1;
-constexpr int LDR_DOWN_LEFT_PIN = A2;
+constexpr int LDR_TOP_LEFT_PIN = A1;
+constexpr int LDR_TOP_RIGHT_PIN = A2;
+constexpr int LDR_DOWN_LEFT_PIN = A0;
 constexpr int LDR_DOWN_RIGHT_PIN = A3;
 constexpr int JOYSTICK_X_PIN = A4; // Oś X joysticka
 constexpr int JOYSTICK_Y_PIN = A5; // Oś Y joysticka
@@ -45,18 +45,18 @@ const SunTrackerPins trackerPins = {
 };
 
 const SunTrackerConfig trackerConfig = {
-    .servoVMinAngle = 10,
-    .servoVMaxAngle = 85,
+    .servoVMinAngle = 5,
+    .servoVMaxAngle = 80,
     .servoHMinAngle = 5,
     .servoHMaxAngle = 175,
-    .performLdrCalibration = true,
-    .performServoCalibration = false,
+    .performLdrCalibration = false,
+    .performServoCalibration = true,
     .performInitialSearch = false,
     .useJoystick = true,
     .usePotentiometers = false,
     .ldrSensorsConnected = true,
     .enableServoMovement = false,
-    .defaultServoSpeed = 80,
+    .defaultServoSpeed = 100,
     .defaultTolerance = 20,
     .runningUpdateIntervalMs = 1000 // 5 minut
 };
@@ -234,6 +234,8 @@ void setup() {
 void loop() {
   commandHandler.update(); // Sprawdzaj, czy przyszła komenda synchronizacji
 
+  sunTracker.update();
+
   // Mruganie wbudowaną diodą LED jako "heartbeat" systemu
   if (sdCard.isOK()) {
     // Normalny "heartbeat" systemu
@@ -326,7 +328,7 @@ void loop() {
       Serial.print(F("%, Cisnienir(hPa): "));
       Serial.println(g_sensorData.pressure_bme, 2);
       
-      sunTracker.update();
+      
       
       Serial.println(); // Pusta linia dla czytelności
     }
