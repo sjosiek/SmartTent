@@ -8,8 +8,8 @@ struct CalibrationStep {
 };
 
 static const CalibrationStep calibrationSequence[] = {
-    {0, 2000}, {45, 1000}, {90, 1000}, {135, 1000}, {180, 2000},
-    {135, 1000}, {90, 1000}, {45, 1000}, {0, 1000}, {45, 1000}, {90, 1000}
+    {0, 2000}, {45, 2000}, {90, 2000}, {135, 2000}, {180, 2000},
+    {135, 2000}, {90, 2000}, {45, 2000}, {0, 2000}, {45, 2000}, {90, 2000}
 };
 static const int calibrationStepCount = sizeof(calibrationSequence) / sizeof(calibrationSequence[0]);
 

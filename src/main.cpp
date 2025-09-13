@@ -45,20 +45,20 @@ const SunTrackerPins trackerPins = {
 };
 
 const SunTrackerConfig trackerConfig = {
-    .servoVMinAngle = 5,
-    .servoVMaxAngle = 80,
-    .servoHMinAngle = 5,
-    .servoHMaxAngle = 175,
-    .performLdrCalibration = false,
+    .servoVMinAngle = 0,
+    .servoVMaxAngle = 90,
+    .servoHMinAngle = 0,
+    .servoHMaxAngle = 180,
+    .performLdrCalibration = true,
     .performServoCalibration = true,
     .performInitialSearch = false,
     .useJoystick = true,
     .usePotentiometers = false,
     .ldrSensorsConnected = true,
-    .enableServoMovement = false,
-    .defaultServoSpeed = 100,
-    .defaultTolerance = 20,
-    .runningUpdateIntervalMs = 1000 // 5 minut
+    .enableServoMovement = true,
+    .defaultServoSpeed = 200,
+    .defaultTolerance = 100,
+    .runningUpdateIntervalMs = 100 // 5 minut
 };
 
 
@@ -68,8 +68,8 @@ const SunTrackerConfig trackerConfig = {
 #define TOUCH_SENSOR_PIN 3      // Pin dla czujnika dotykowego (Przerwanie 1)
 #define POWER_CONTROL_PIN 4     // Pin do sterowania zasilaniem peryferiów
 #define DHT_PIN 6               // Nowy pin dla czujnika DHT11
-#define LED_CLK_PIN 8           // CLK pin dla wyświetlacza LED
-#define LED_DIO_PIN 9           // DIO pin dla wyświetlacza LED
+#define LED_CLK_PIN 22          // CLK pin dla wyświetlacza LED (przeniesiony > 13)
+#define LED_DIO_PIN 23          // DIO pin dla wyświetlacza LED (przeniesiony > 13)
 #define SPI_MISO_PIN 50         // Sprzętowy pin MISO dla SPI
 #define SPI_MOSI_PIN 51         // Sprzętowy pin MOSI dla SPI
 #define SPI_SCK_PIN 52          // Sprzętowy pin SCK dla SPI

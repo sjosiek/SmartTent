@@ -87,7 +87,7 @@ void SunTracker::handleStateMachine() {
                 } else {
                     Serial.println(F("Pomijam kalibrację serwomechanizmów. Ustawiam pozycję startową..."));
                     horizontalServo.setTargetPosition(bestHorizontalAngle);
-                    verticalServo.setTargetPosition(30);
+                    verticalServo.setTargetPosition(90);
                     currentState = ProgramState::CENTERING;
                 }
             }
@@ -167,9 +167,9 @@ void SunTracker::handleStateMachine() {
 
         case ProgramState::SERVO_CALIBRATE_VERTICAL:
             if (!verticalServo.isCalibrating()) {
-                Serial.println(F("Kalibracja serwa pionowego zakończona. Ustawiam pozycję startową (H:90 V:30 stopni)..."));
+                Serial.println(F("Kalibracja serwa pionowego zakończona. Ustawiam pozycję startową (H:90 V:90 stopni)..."));
                 horizontalServo.setTargetPosition(bestHorizontalAngle);
-                verticalServo.setTargetPosition(30);
+                verticalServo.setTargetPosition(90);
                 currentState = ProgramState::CENTERING;
             }
             break;
