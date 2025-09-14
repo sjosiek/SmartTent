@@ -1,0 +1,25 @@
+// Plik: CommandHandler.h
+
+#ifndef COMMAND_HANDLER_H
+#define COMMAND_HANDLER_H
+
+#include <Arduino.h>
+#include "Clock.h"
+#include "SDCard.h"
+#include "Configuration.h"
+#include "SmoothServo.h"
+
+class CommandHandler {
+public:
+  CommandHandler(Clock& clock, SDCard& sdCard, Configuration& config, SmoothServo* servos, int servoCount);
+  void update();
+
+private:
+  Clock* _clock;
+  SDCard* _sdCard;
+  Configuration* _config;
+  SmoothServo* _servos;
+  int _servoCount;
+};
+
+#endif

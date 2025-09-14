@@ -5,6 +5,7 @@
 
 #include <LiquidCrystal_I2C.h>
 #include <Arduino.h>
+#include "SensorData.h" // Dołączamy nową strukturę
 
 class LcdDisplay {
 public:
@@ -12,13 +13,16 @@ public:
   void init();
   void printWelcomeMessage();
   void printSleepMessage(); // NOWA METODA
-  void update(String date, String time, float temp_ext, float temp_int, float humidity, float pressure);
+  void update(const SensorData& data);
   void clear();
   void noBacklight();
   void backlight();
 
 private:
+  bool checkAndInit(); // Prywatna metoda pomocnicza
   LiquidCrystal_I2C lcd;
+  uint8_t _address;
+  bool _isInitialized;
 };
 
 #endif

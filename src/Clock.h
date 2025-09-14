@@ -12,16 +12,22 @@ public:
   bool init();
   DateTime getTime();
 
-  String getDateString();
-  String getTimeString(bool withSeconds = false);
-  
+  static String formatDate(const DateTime& dt);
+  static String formatTime(const DateTime& dt, bool withSeconds = false);
+
+  void configureForAlarm();
   float getTemperature();
 
-  // Dostęp do obiektu rtc, aby zarządzać alarmami z pliku .ino
-  RTC_DS3231 rtc;
+  // Metody opakowujące funkcje RTC dla lepszej hermetyzacji
+  void adjust(const DateTime& dt);
+  bool lostPower();
+  bool setAlarm1(const DateTime& dt, Ds3231Alarm1Mode alarm_mode);
+  bool alarmFired(uint8_t alarm_num);
+  void clearAlarm(uint8_t alarm_num);
 
 private:
-  // RTC_DS3231 rtc; // Przeniesiono do public
+  static constexpr float INVALID_TEMP = -127.0f; // Wartość błędu zwracana przez niektóre czujniki
+  RTC_DS3231 rtc;
 };
 
 #endif
