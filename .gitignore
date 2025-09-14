@@ -39,6 +39,7 @@
 
 # debug information files
 *.dwo
-/.pio
-.vscode/launch.json
-.vscode/c_cpp_properties.json
+
+# PlatformIO/VSCode specific
+.pio/
+.vscode/
