@@ -2,7 +2,6 @@
 #define SUN_TRACKER_H
 
 #include <Arduino.h>
-#include <EEPROM.h>
 #include "SmoothServo.h"
 #include "ControlPanel.h"
 #include <limits.h>
@@ -95,6 +94,9 @@ private:
     ProgramState currentState;
     uint32_t startupEntryTime;
     uint32_t lastRunningUpdateTime;
+    uint32_t lastDebugPrintTime;
+    uint32_t searchWaitStartTime;
+    long lastMeasuredLightIntensity;
 
     // --- Dane kalibracyjne LDR ---
     int ldrMin[LDR_COUNT];
@@ -111,12 +113,11 @@ private:
     long bestLightIntensity;
     int bestHorizontalAngle;
     int bestVerticalAngle;
-    uint32_t searchWaitStartTime;
-    long lastMeasuredLightIntensity;
+    
     static constexpr uint32_t SEARCH_WAIT_TIME = 250;
 
     // --- Zmienne do debugowania ---
-    uint32_t lastDebugPrintTime;
+    
     static constexpr uint32_t DEBUG_PRINT_INTERVAL = 500;
 
     // --- Zmienne tymczasowe dla pętli ---

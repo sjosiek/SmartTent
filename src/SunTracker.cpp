@@ -1,23 +1,30 @@
 #include "SunTracker.h"
+#include <EEPROM.h>
 
 SunTracker::SunTracker(const SunTrackerPins& pins, const SunTrackerConfig& config)
     : pins(pins),
       config(config),
+      // horizontalServo, verticalServo - inicjalizowane domyślnie
       controlPanel(ModulePins{pins.joystickXPin, pins.joystickYPin, pins.joystickSwPin}),
       currentState(ProgramState::STARTUP_WAIT),
       startupEntryTime(0),
+      lastRunningUpdateTime(0),
+      lastDebugPrintTime(0),
+      searchWaitStartTime(0),
+      lastMeasuredLightIntensity(0),
+      // ldrMin, ldrMax - inicjalizowane w ciele konstruktora
       calibrationDataLoaded(false),
       calibrationLdrIndex(0),
       isCalibratingLight(true),
+      // ldrNames - inicjalizowany w pliku .h
       searchHorizontalAngle(config.servoHMinAngle),
       searchVerticalAngle(config.servoVMinAngle),
       bestLightIntensity(-1),
       bestHorizontalAngle(90),
-      bestVerticalAngle(30),
-      searchWaitStartTime(0),
-      lastMeasuredLightIntensity(0),
-      lastRunningUpdateTime(0),
-      lastDebugPrintTime(0)
+      bestVerticalAngle(30)
+      
+      
+      
 {
     // Domyślne wartości kalibracji
     for (int i = 0; i < LDR_COUNT; ++i) {
