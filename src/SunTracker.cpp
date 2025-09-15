@@ -1,11 +1,10 @@
 #include "SunTracker.h"
 #include <EEPROM.h>
 
-SunTracker::SunTracker(const SunTrackerPins& pins, const SunTrackerConfig& config)
+SunTracker::SunTracker(const SunTrackerPins& pins, const SunTrackerConfig& config, ControlPanel& controlPanel)
     : pins(pins),
       config(config),
-      // horizontalServo, verticalServo - inicjalizowane domyślnie
-      controlPanel(ModulePins{pins.joystickXPin, pins.joystickYPin, pins.joystickSwPin}),
+      controlPanel(controlPanel), // ZMIANA: Inicjalizujemy referencję
       currentState(ProgramState::STARTUP_WAIT),
       startupEntryTime(0),
       lastRunningUpdateTime(0),
@@ -40,10 +39,6 @@ void SunTracker::begin() {
     verticalServo.setStepSize(5);
 
     Serial.println(F("\n--- Sun Tracker v2.0 Library ---"));
-
-    if (config.useJoystick) {
-        controlPanel.begin();
-    }
     startupEntryTime = millis();
 }
 
@@ -154,8 +149,8 @@ void SunTracker::handleStateMachine() {
                         currentState = ProgramState::SERVO_CALIBRATE_HORIZONTAL;
                     } else {
                         Serial.println(F("\nPomijam kalibrację serwomechanizmów. Ustawiam pozycję startową..."));
-                        horizontalServo.setTargetPosition(bestHorizontalAngle);
-                        verticalServo.setTargetPosition(30);
+                        horizontalServo.setTargetPosition(90);
+                        verticalServo.setTargetPosition(90);
                         currentState = ProgramState::CENTERING;
                     }
                 }

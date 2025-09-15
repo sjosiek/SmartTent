@@ -14,9 +14,6 @@ struct SunTrackerPins {
     uint8_t ldrTopRightPin;
     uint8_t ldrDownLeftPin;
     uint8_t ldrDownRightPin;
-    uint8_t joystickXPin;
-    uint8_t joystickYPin;
-    uint8_t joystickSwPin;
 };
 
 // Struktura przechowująca ustawienia działania trackera
@@ -41,7 +38,7 @@ struct SunTrackerConfig {
 
 class SunTracker {
 public:
-    SunTracker(const SunTrackerPins& pins, const SunTrackerConfig& config);
+    SunTracker(const SunTrackerPins& pins, const SunTrackerConfig& config, ControlPanel& controlPanel);
     void begin();
     void update();
 
@@ -88,7 +85,7 @@ private:
 
     SmoothServo horizontalServo;
     SmoothServo verticalServo;
-    ControlPanel controlPanel;
+    ControlPanel& controlPanel; // ZMIANA: Referencja do zewnętrznego panelu
 
     // --- Zmienne stanu ---
     ProgramState currentState;

@@ -54,6 +54,9 @@ public:
   void playTone(unsigned int frequency);
   void stopTone();
 
+  // Metoda do debugowania
+  void printDebugInfo();
+
 private:
   // NOWOŚĆ: Prywatne metody do logiki joysticka
   int _applyDeadZoneAndMap(int value);
@@ -71,5 +74,4 @@ private:
   int _joyCenter;
   int _joyDeadZone;
 };
-
 #endif

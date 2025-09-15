@@ -4,6 +4,7 @@
 #include <SPI.h>
 #include <SD.h>
 #include <Arduino.h>
+#include "ProjectConfig.h"   // Dołączamy centralną konfigurację projektu
 #include "WeatherSensor.h"
 #include "Clock.h"
 #include "LcdDisplay.h"
@@ -18,70 +19,36 @@
 #include "SmoothServo.h"     // Dołączamy klasę serwomechanizmu
 #include "SensorData.h"      // Dołączamy strukturę danych
 #include "SunTracker.h"      // SUnTracker
-
-const bool SLEEP_MODE_ENABLED = false;
-
-constexpr int HORIZONTAL_SERVO_PIN = 9; //poziome
-constexpr int VERTICAL_SERVO_PIN = 10;  //pionowe
-constexpr int LDR_TOP_LEFT_PIN = A1;
-constexpr int LDR_TOP_RIGHT_PIN = A2;
-constexpr int LDR_DOWN_LEFT_PIN = A0;
-constexpr int LDR_DOWN_RIGHT_PIN = A3;
-constexpr int JOYSTICK_X_PIN = A4; // Oś X joysticka
-constexpr int JOYSTICK_Y_PIN = A5; // Oś Y joysticka
-constexpr int JOYSTICK_SW_PIN = 35; // Przycisk joysticka
+#include "ControlPanel.h"    // Dołączamy klasę panelu sterowania
 
 // --- Konfiguracja działania trackera---
+// Zmieniono na standardową inicjalizację C++, aby zapewnić kompatybilność z kompilatorem avr-gcc.
 const SunTrackerPins trackerPins = {
-    .horizontalServoPin = HORIZONTAL_SERVO_PIN,
-    .verticalServoPin = VERTICAL_SERVO_PIN,
-    .ldrTopLeftPin = LDR_TOP_LEFT_PIN,
-    .ldrTopRightPin = LDR_TOP_RIGHT_PIN,
-    .ldrDownLeftPin = LDR_DOWN_LEFT_PIN,
-    .ldrDownRightPin = LDR_DOWN_RIGHT_PIN,
-    .joystickXPin = JOYSTICK_X_PIN,
-    .joystickYPin = JOYSTICK_Y_PIN,
-    .joystickSwPin = JOYSTICK_SW_PIN
+    HORIZONTAL_SERVO_PIN,
+    VERTICAL_SERVO_PIN,
+    LDR_TOP_LEFT_PIN,
+    LDR_TOP_RIGHT_PIN,
+    LDR_DOWN_LEFT_PIN,
+    LDR_DOWN_RIGHT_PIN,
 };
 
 const SunTrackerConfig trackerConfig = {
-    .servoVMinAngle = 0,
-    .servoVMaxAngle = 90,
-    .servoHMinAngle = 0,
-    .servoHMaxAngle = 180,
-    .performLdrCalibration = false,
-    .performServoCalibration = true,
-    .performInitialSearch = true,
-    .useJoystick = true,
-    .usePotentiometers = false,
-    .ldrSensorsConnected = true,
-    .enableServoMovement = true,
-    .defaultServoSpeed = 200,
-    .defaultTolerance = 100,
-    .runningUpdateIntervalMs = 100 // 5 minut
+    0,    // servoVMinAngle
+    90,   // servoVMaxAngle
+    0,    // servoHMinAngle
+    180,  // servoHMaxAngle
+    TRACKER_PERFORM_LDR_CALIBRATION,
+    TRACKER_PERFORM_SERVO_CALIBRATION,
+    TRACKER_PERFORM_INITIAL_SEARCH,
+    TRACKER_USE_JOYSTICK,
+    false, // usePotentiometers (nieużywane, ale musi być w inicjalizatorze)
+    TRACKER_LDR_SENSORS_CONNECTED,
+    TRACKER_ENABLE_SERVO_MOVEMENT,
+    200,  // defaultServoSpeed
+    100,  // defaultTolerance
+    100   // runningUpdateIntervalMs
 };
 
-
-
-
-#define RTC_ALARM_PIN 2         // Pin dla alarmu z RTC (Przerwanie 0) - SQW
-#define TOUCH_SENSOR_PIN 3      // Pin dla czujnika dotykowego (Przerwanie 1)
-#define POWER_CONTROL_PIN 4     // Pin do sterowania zasilaniem peryferiów
-#define DHT_PIN 6               // Nowy pin dla czujnika DHT11
-#define LED_CLK_PIN 22          // CLK pin dla wyświetlacza LED (przeniesiony > 13)
-#define LED_DIO_PIN 23          // DIO pin dla wyświetlacza LED (przeniesiony > 13)
-#define SPI_MISO_PIN 50         // Sprzętowy pin MISO dla SPI
-#define SPI_MOSI_PIN 51         // Sprzętowy pin MOSI dla SPI
-#define SPI_SCK_PIN 52          // Sprzętowy pin SCK dla SPI
-#define SD_CS_PIN 53            // Pin Chip Select dla karty SD
-// #define SERVO1_PIN A0           // Pin dla pierwszego serwa
-// #define SERVO2_PIN A1           // Pin dla drugiego serwa
-
-#define DHT_TYPE DHT11          // Typ czujnika DHT11
-
-#define LCD_ADDRESS 0x27        // Adres wyświetlacza LCD
-#define LCD_COLS 20             // Liczba kolumn wyświetlacza
-#define LCD_ROWS 4              // Liczba wierszy wyświetlacza
 
 // --- Centralna Konfiguracja Serwomechanizmów ---
 struct ServoConfig {
@@ -107,17 +74,28 @@ const uint8_t DATA_PINS_TO_DEENERGIZE[] = {
     20, 21,             // I2C: SDA, SCL
     DHT_PIN,            // DHT11
     LED_CLK_PIN,        // LED Display
-    LED_DIO_PIN,        // LED Display
-    SPI_MISO_PIN, SPI_MOSI_PIN, SPI_SCK_PIN, SD_CS_PIN, // SPI dla karty SD
+    LED_DIO_PIN,        // LED Display,
+    MISO, MOSI, SCK, SD_CS_PIN, // SPI dla karty SD (używamy standardowych stałych Arduino)
     // SERVO1_PIN, SERVO2_PIN // Piny serwomechanizmów
     // UWAGA: Jeśli dodasz serwa, pamiętaj o dodaniu ich pinów tutaj!
 };
 const uint8_t DATA_PINS_COUNT = sizeof(DATA_PINS_TO_DEENERGIZE) / sizeof(DATA_PINS_TO_DEENERGIZE[0]);
 
+// --- Konfiguracja i inicjalizacja Panelu Sterowania ---
+// Musi być zdefiniowany PRZED SunTrackerem, ponieważ jest do niego przekazywany.
+// Zmieniono na standardową inicjalizację C++, aby zapewnić kompatybilność z kompilatorem avr-gcc.
+const ModulePins controlPanelPins = {
+  JOY1_X_PIN, JOY1_Y_PIN, JOY1_SW_PIN,
+  JOY2_X_PIN, JOY2_Y_PIN, JOY2_SW_PIN,
+  ENC_DT_PIN, ENC_CLK_PIN, ENC_SW_PIN,
+  BUZZER_PIN
+};
+
+ControlPanel controlPanel(controlPanelPins);
+
 
 //Inicjalizacja modułów
-
-SunTracker sunTracker(trackerPins, trackerConfig);  //SUnTracker
+SunTracker sunTracker(trackerPins, trackerConfig, controlPanel);  //SUnTracker
 
 Clock clock;                   // RTC
 DhtSensor dhtSensor(DHT_PIN, DHT_TYPE);          // DHT11
@@ -135,6 +113,7 @@ SDCard sdCard(SD_CS_PIN);
 // niestandardowej tablicy o zerowej długości, gdy serwa są wyłączone.
 // Ten dodatkowy element nigdy nie będzie użyty, ponieważ pętle są chronione przez SERVO_COUNT.
 SmoothServo servos[max(1, SERVO_COUNT)];
+
  
 SensorData g_sensorData; // Zastępujemy wiele zmiennych globalnych jedną strukturą
 Configuration g_config;  // Globalny obiekt przechowujący konfigurację
@@ -207,6 +186,10 @@ void setup() {
     sunTracker.begin();
     
   }
+  
+  // Inicjalizacja panelu sterowania (zawsze, niezależnie od trybu)
+  controlPanel.begin();
+  Serial.println(F("Panel sterowania zainicjalizowany."));
 
   // Inicjalizacja karty SD (zawsze, niezależnie od trybu uśpienia)
   sdCard.init();
@@ -234,6 +217,7 @@ void setup() {
 void loop() {
   commandHandler.update(); // Sprawdzaj, czy przyszła komenda synchronizacji
 
+  controlPanel.update(); // Odczytuj stan joysticków, enkodera i przycisków
   sunTracker.update();
 
   // Mruganie wbudowaną diodą LED jako "heartbeat" systemu
@@ -327,6 +311,9 @@ void loop() {
       Serial.print(g_sensorData.hum_dht);
       Serial.print(F("%, Cisnienir(hPa): "));
       Serial.println(g_sensorData.pressure_bme, 2);
+      
+      // Wywołanie debugowania panelu sterowania
+      controlPanel.printDebugInfo();
       
       
       

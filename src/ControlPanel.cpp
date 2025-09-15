@@ -114,3 +114,28 @@ bool ControlPanel::wasEncoderClicked() {
 void ControlPanel::beep(unsigned int frequency, unsigned long duration) { tone(_pins.buzzer, frequency, duration); }
 void ControlPanel::playTone(unsigned int frequency) { tone(_pins.buzzer, frequency); }
 void ControlPanel::stopTone() { noTone(_pins.buzzer); }
+
+void ControlPanel::printDebugInfo() {
+  Serial.println(F("--- Control Panel Debug ---"));
+  
+  // Joystick 1
+  Serial.print(F("Joy1: Raw(X,Y): "));
+  Serial.print(getJoy1XRaw());
+  Serial.print(F(", "));
+  Serial.print(getJoy1YRaw());
+  Serial.print(F(" | Mapped(X,Y): "));
+  Serial.print(getJoy1XMapped());
+  Serial.print(F(", "));
+  Serial.print(getJoy1YMapped());
+  Serial.print(F(" | Dir: "));
+  Serial.print(getJoy1Direction());
+  Serial.print(F(" | Btn: "));
+  Serial.println(isJoy1Pressed() ? F("PRESSED") : F("RELEASED"));
+
+  // Enkoder
+  Serial.print(F("Encoder: Value: "));
+  Serial.print(getEncoderValue());
+  Serial.print(F(" | Btn: "));
+  Serial.println(isEncoderPressed() ? F("PRESSED") : F("RELEASED"));
+  Serial.println(F("---------------------------"));
+}
