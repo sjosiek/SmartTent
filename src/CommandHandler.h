@@ -6,7 +6,7 @@
 #include <Arduino.h>
 #include "Clock.h"
 #include "SDCard.h"
-#include "Configuration.h"
+#include "ProjectConfig.h"
 #include "SmoothServo.h"
 
 class CommandHandler {

@@ -7,6 +7,12 @@
 #include <Arduino.h>
 #include <DHT.h> // Potrzebne dla definicji DHT_TYPE
 
+struct Configuration {
+  uint32_t activeModeMinutes = 5;       // Domyślnie 5 minut
+  uint32_t sensorUpdateIntervalMs = 1000; // Domyślnie 1 sekunda
+  uint8_t ledBrightness = 7;            // Domyślnie 7
+};
+
 // --- Ustawienia globalne ---
 constexpr bool SLEEP_MODE_ENABLED = false;
 

@@ -15,7 +15,6 @@
 #include "CommandHandler.h"
 #include "DebouncedButton.h" // Dołączamy nową klasę
 #include "SDCard.h"          // Dołączamy nową klasę
-#include "Configuration.h"   // Dołączamy strukturę konfiguracyjną
 #include "SmoothServo.h"     // Dołączamy klasę serwomechanizmu
 #include "SensorData.h"      // Dołączamy strukturę danych
 #include "SunTracker.h"      // SUnTracker
