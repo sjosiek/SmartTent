@@ -61,12 +61,12 @@ void LcdDisplay::update(const SensorData& data) {
 
   // Linia 1: Dane z namiotu (DHT11)
   lcd.setCursor(0, 1);
-  snprintf(buffer, sizeof(buffer), "N: %4.1f%cC  H: %3.0f%%  ", data.temp_dht, DEGREE_SYMBOL, data.hum_dht);
+  snprintf(buffer, sizeof(buffer), "N: %4.1f%cC  H: %3.0f%%  ", (double)data.temp_dht, DEGREE_SYMBOL, (double)data.hum_dht);
   lcd.print(buffer); 
 
   // Linia 2: Dane z zewnątrz (BME280)
   lcd.setCursor(0, 2);
-  snprintf(buffer, sizeof(buffer), "Z: %4.1f%cC H: %3.0f%%  ", data.temp_bme, DEGREE_SYMBOL, data.hum_bme);
+  snprintf(buffer, sizeof(buffer), "Z: %4.1f%cC H: %3.0f%%  ", (double)data.temp_bme, DEGREE_SYMBOL, (double)data.hum_bme);
   lcd.print(buffer);
 
   // Linia 3: Aktualne pozycje serwomechanizmów
@@ -74,7 +74,7 @@ void LcdDisplay::update(const SensorData& data) {
   // Zmieniono formatowanie ciśnienia, aby pokazywało 2 miejsca po przecinku.
   // Format został zacieśniony, aby zmieścić się w 20 kolumnach wyświetlacza.
   // Użyto "%7.2f", aby zapewnić stałą szerokość i wyrównanie.
-  snprintf(buffer, sizeof(buffer), "W:%4.1f%cC P:%7.2fhPa", data.temp_rtc, DEGREE_SYMBOL, data.pressure_bme);
+  snprintf(buffer, sizeof(buffer), "W:%4.1f%cC P:%7.2fhPa", (double)data.temp_rtc, DEGREE_SYMBOL, (double)data.pressure_bme);
   lcd.print(buffer);
   
 }
