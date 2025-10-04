@@ -9,7 +9,8 @@
 
 struct Configuration {
   uint32_t activeModeMinutes = 5;       // Domyślnie 5 minut
-  uint32_t sensorUpdateIntervalMs = 1000; // Domyślnie 1 sekunda
+  uint32_t sensorUpdateIntervalMs = 1000; // Domyślnie 1 sekunda (dla LCD, SD)
+  uint32_t trackerUpdateIntervalMs = 300000; // Domyślnie 5 minut (dla SunTracker)
   uint8_t ledBrightness = 7;            // Domyślnie 7
 };
 
@@ -57,6 +58,7 @@ constexpr bool TRACKER_PERFORM_INITIAL_SEARCH = true;
 constexpr bool TRACKER_USE_JOYSTICK = true;
 constexpr bool TRACKER_LDR_SENSORS_CONNECTED = true;
 constexpr bool TRACKER_ENABLE_SERVO_MOVEMENT = true;
+constexpr bool TRACKER_ENABLE_DEBUG_PRINT = false; // Ustaw na 'true', aby włączyć szczegółowe logi z SunTracker
 
 // --- Control Panel ---
 constexpr uint8_t JOY1_X_PIN = A8;

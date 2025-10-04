@@ -61,7 +61,9 @@ void SunTracker::update() {
     }
 
     handleStateMachine();
-    printDebugInfo();
+    if (config.enableDebugPrint) {
+        printDebugInfo();
+    }
 }
 
 void SunTracker::handleStateMachine() {
@@ -195,6 +197,12 @@ void SunTracker::handleStateMachine() {
             break;
 
         case ProgramState::SEARCHING:
+            // Ustawienie prędkości serwomechanizmów na domyślną prędkość z konfiguracji.
+            // Spowoduje to, że ruchy podczas wyszukiwania będą tak samo płynne/wolne
+            // jak podczas trybu RUNNING.
+            horizontalServo.setSpeed(config.defaultServoSpeed);
+            verticalServo.setSpeed(config.defaultServoSpeed);
+
             if (horizontalServo.hasReachedTarget() && verticalServo.hasReachedTarget()) {
                 if (searchWaitStartTime == 0) {
                     searchWaitStartTime = millis();
@@ -289,6 +297,16 @@ void SunTracker::handleStateMachine() {
                             if (config.enableServoMovement) horizontalServo.reverseMoveRight();
                         }
                     }
+
+                    // ZMIANA: Przenosimy logowanie informacji o stanie RUNNING tutaj.
+                    // Dzięki temu komunikat pojawi się tylko raz, po wykonaniu aktualizacji (co 5 minut),
+                    // a nie co 500ms, jak to było w funkcji printDebugInfo().
+                    if (config.enableDebugPrint) {
+                        Serial.print(F("  -> LDR(TL,TR,DL,DR): "));
+                        Serial.print(topLeftVal); Serial.print(F(",")); Serial.print(topRightVal); Serial.print(F(","));
+                        Serial.print(downLeftVal); Serial.print(F(",")); Serial.println(downRightVal);
+                        Serial.print(F("  -> Diffs(H,V): ")); Serial.print(horizontalDiff); Serial.print(F(",")); Serial.println(verticalDiff);
+                    }
                 }
             }
         }
@@ -377,31 +395,10 @@ void SunTracker::printDebugInfo() {
                 Serial.print(F(" | Najlepszy pomiar: ")); Serial.println(bestLightIntensity);
                 break;
             case ProgramState::RUNNING:
-              /*  // Sprawdź, czy serwa dotarły do celu i czekamy na następną aktualizację
-                if (lastRunningUpdateTime != 0 && (millis() - lastRunningUpdateTime < config.runningUpdateIntervalMs)) {
-                    Serial.print(F("Śledzenie... Następna aktualizacja za: "));
-                    // Oblicz pozostały czas w sekundach
-                    long remainingTime = (config.runningUpdateIntervalMs - (millis() - lastRunningUpdateTime)) / 1000;
-                    Serial.print(remainingTime);
-                    Serial.println(F(" s"));
-                } else {
-                    // Ten komunikat pojawi się tuż po wykonaniu aktualizacji lub jeśli serwa jeszcze nie dotarły na miejsce
-                    Serial.print(F("LDR(TL,TR,DL,DR): "));
-                    Serial.print(topLeftVal); Serial.print(F(",")); Serial.print(topRightVal); Serial.print(F(","));
-                    Serial.print(downLeftVal); Serial.print(F(",")); Serial.print(downRightVal);
-                    Serial.print(F(" | Diffs(H,V): "));
-                    Serial.print(horizontalDiff); Serial.print(F(",")); Serial.print(verticalDiff);
-                    Serial.print(F(" | Servos(H,V): "));
-                    Serial.print(horizontalServo.getCurrentPosition()); Serial.print(F(",")); Serial.println(verticalServo.getCurrentPosition());
-                }*/
-                Serial.print(F("LDR(TL,TR,DL,DR): "));
-                Serial.print(topLeftVal); Serial.print(F(",")); Serial.print(topRightVal); Serial.print(F(","));
-                Serial.print(downLeftVal); Serial.print(F(",")); Serial.print(downRightVal);
-                Serial.print(F(" | Diffs(H,V): "));
-                Serial.print(horizontalDiff); Serial.print(F(",")); Serial.print(verticalDiff);
-                Serial.print(F(" | Servos(H,V): "));
-                Serial.print(horizontalServo.getCurrentPosition()); Serial.print(F(",")); Serial.println(verticalServo.getCurrentPosition());
-
+                // ZMIANA: W stanie RUNNING nie drukujemy już nic w tej funkcji.
+                // Logowanie zostało przeniesione do bloku `case ProgramState::RUNNING` w `handleStateMachine`,
+                // aby pojawiało się tylko w momencie faktycznej aktualizacji pozycji.
+                // Można tu dodać logikę oczekiwania, jeśli chcesz.
                 break;
             case ProgramState::PARKED:
                 Serial.print(F("Zaparkowany. Pozycja (H,V): "));
@@ -463,4 +460,19 @@ int SunTracker::normalizeLDR(int rawValue, int ldrIndex) {
     }
     int constrainedVal = constrain(rawValue, ldrMin[ldrIndex], ldrMax[ldrIndex]);
     return map(constrainedVal, ldrMin[ldrIndex], ldrMax[ldrIndex], 0, 1000);
+}
+
+// --- Metody dostępowe (gettery) ---
+
+int SunTracker::getHorizontalServoPosition() const {
+    return horizontalServo.getCurrentPosition();
+}
+
+int SunTracker::getVerticalServoPosition() const {
+    return verticalServo.getCurrentPosition();
+}
+
+void SunTracker::getLdrValues(int& tl, int& tr, int& dl, int& dr) const {
+    tl = topLeftVal;  tr = topRightVal;
+    dl = downLeftVal; dr = downRightVal;
 }

@@ -30,6 +30,7 @@ struct SunTrackerConfig {
     bool usePotentiometers;
     bool ldrSensorsConnected;
     bool enableServoMovement;
+    bool enableDebugPrint;
 
     int defaultServoSpeed;
     int defaultTolerance;
@@ -41,6 +42,11 @@ public:
     SunTracker(const SunTrackerPins& pins, const SunTrackerConfig& config, ControlPanel& controlPanel);
     void begin();
     void update();
+
+    // Metody do odczytu stanu trackera z zewnątrz
+    int getHorizontalServoPosition() const;
+    int getVerticalServoPosition() const;
+    void getLdrValues(int& tl, int& tr, int& dl, int& dr) const;
 
 private:
     // --- Maszyna Stanów Programu ---

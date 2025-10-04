@@ -82,6 +82,7 @@ bool SDCard::readConfiguration(const char* filename, Configuration& config) {
 
       if (key == "active_minutes") config.activeModeMinutes = value.toInt();
       if (key == "sensor_interval") config.sensorUpdateIntervalMs = value.toInt();
+      if (key == "tracker_interval") config.trackerUpdateIntervalMs = value.toInt();
       if (key == "led_brightness") config.ledBrightness = value.toInt();
     }
   }
@@ -111,6 +112,7 @@ bool SDCard::writeConfiguration(const Configuration& config, const char* filenam
   configFile.println("# Konfiguracja systemu SmartTent (zapisana automatycznie)");
   configFile.print("active_minutes="); configFile.println(config.activeModeMinutes);
   configFile.print("sensor_interval="); configFile.println(config.sensorUpdateIntervalMs);
+  configFile.print("tracker_interval="); configFile.println(config.trackerUpdateIntervalMs);
   configFile.print("led_brightness="); configFile.println(config.ledBrightness);
 
   configFile.close();

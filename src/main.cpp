@@ -43,9 +43,10 @@ const SunTrackerConfig trackerConfig = {
     false, // usePotentiometers (nieużywane, ale musi być w inicjalizatorze)
     TRACKER_LDR_SENSORS_CONNECTED,
     TRACKER_ENABLE_SERVO_MOVEMENT,
-    200,  // defaultServoSpeed
-    100,  // defaultTolerance
-    100   // runningUpdateIntervalMs
+    TRACKER_ENABLE_DEBUG_PRINT,
+    100,  // defaultServoSpeed
+    50,  // defaultTolerance
+    300000 // Domyślna wartość, która zostanie nadpisana z konfiguracji
 };
 
 
@@ -70,7 +71,7 @@ const uint32_t I2C_TIMEOUT_US = 25000; // 25000 mikrosekund = 25 milisekund
 
 // Tablica pinów danych, które muszą być de-energetyzowane przed uśpieniem
 const uint8_t DATA_PINS_TO_DEENERGIZE[] = {
-    20, 21,             // I2C: SDA, SCL
+    A4, A5,             // I2C: SDA, SCL
     DHT_PIN,            // DHT11
     LED_CLK_PIN,        // LED Display
     LED_DIO_PIN,        // LED Display,
@@ -120,11 +121,12 @@ Configuration g_config;  // Globalny obiekt przechowujący konfigurację
 CommandHandler commandHandler(clock, sdCard, g_config, servos, SERVO_COUNT); // Przekazujemy tablicę do CommandHandler
  
  
-Timer sensorUpdateTimer(1000); // Domyślny interwał, zostanie nadpisany przez konfigurację
-Timer ledUpdateTimer(500);      
-Timer heartbeatTimer(5000);
+Timer sensorUpdateTimer(1000); // Domyślny interwał, zostanie nadpisany przez konfigurację z SD
+Timer ledUpdateTimer(500);
+Timer heartbeatTimer(1000);  // ZMIANA: Heartbeat co 1 sekundę
 Timer builtinLedTimer(1000); // Timer do mrugania wbudowaną diodą LED
 Timer errorLedTimer(200);    // Szybszy timer do sygnalizacji błędu
+
 
 
 void setup() {
@@ -204,6 +206,10 @@ void setup() {
   powerManager.setActiveModeDuration(g_config.activeModeMinutes);
   sensorUpdateTimer.setInterval(g_config.sensorUpdateIntervalMs);
   led.init(g_config.ledBrightness);
+  
+  // ZMIANA: Musimy zaktualizować konfigurację trackera po wczytaniu wartości z karty SD.
+  // Inaczej używałby on wartości domyślnej, a nie tej z pliku config.txt.
+  const_cast<SunTrackerConfig&>(trackerConfig).runningUpdateIntervalMs = g_config.trackerUpdateIntervalMs;
 
   // Inicjalizacja serwomechanizmów
   for (int i = 0; i < SERVO_COUNT; i++) {
@@ -291,30 +297,22 @@ void loop() {
     
     if (heartbeatTimer.isReady()) { 
       Serial.println(F("\nHEARTBEAT (Aktywny)\n"));
-      
-      Serial.print(F("\nData:"));
-      Serial.print(g_sensorData.dateStr);
-      Serial.print(F("\nCzas:"));
-      Serial.print(g_sensorData.timeForLcd);
-      Serial.print(F("\nCzas LED:"));
-      Serial.print(g_sensorData.timeForLed);
-      Serial.print(F("\nZewn: "));
-      Serial.print(g_sensorData.temp_bme);
-      Serial.print(F("C, Wilg(Z): "));
-      Serial.print(g_sensorData.hum_bme);
-      Serial.print(F("C, Wewn: "));
-      Serial.print(g_sensorData.temp_rtc);
-      Serial.print(F("C, Namiot: "));
-      Serial.print(g_sensorData.temp_dht);
-      Serial.print(F("C, Wilg(N): "));
-      Serial.print(g_sensorData.hum_dht);
-      Serial.print(F("%, Cisnienir(hPa): "));
-      Serial.println(g_sensorData.pressure_bme, 2);
-      
-      // Wywołanie debugowania panelu sterowania
-      controlPanel.printDebugInfo();
-      
-      
+
+      // ZMIANA: Wyświetlanie danych z SunTrackera
+      int ldr_tl, ldr_tr, ldr_dl, ldr_dr;
+      sunTracker.getLdrValues(ldr_tl, ldr_tr, ldr_dl, ldr_dr);
+
+      char buffer[128];
+      snprintf(buffer, sizeof(buffer),
+               "Czas: %s | Temp(Z/N): %.1f/%.1fC | Wilg(Z/N): %.0f/%.0f%% | Cisn: %.1fhPa",
+               g_sensorData.timeForLcd.c_str(), g_sensorData.temp_bme, g_sensorData.temp_dht,
+               g_sensorData.hum_bme, g_sensorData.hum_dht, g_sensorData.pressure_bme);
+      Serial.println(buffer);
+      snprintf(buffer, sizeof(buffer),
+               "Serva(H/V): %d/%d | LDR(TL,TR,DL,DR): %d,%d,%d,%d",
+               sunTracker.getHorizontalServoPosition(), sunTracker.getVerticalServoPosition(),
+               ldr_tl, ldr_tr, ldr_dl, ldr_dr);
+      Serial.println(buffer);
       
       Serial.println(); // Pusta linia dla czytelności
     }
