@@ -5,29 +5,30 @@
 Clock::Clock() {}
 
 bool Clock::init() {
-  if (!rtc.begin()) {
-    return false;
-  }
-  return true;
+  // Uproszczenie: rtc.begin() zwraca bool, więc możemy go zwrócić bezpośrednio.
+  return rtc.begin();
 }
 
-DateTime Clock::getTime() {
+DateTime Clock::getTime() const {
   return rtc.now();
 }
 
 String Clock::formatDate(const DateTime& dt) {
-  char buffer[11]; // Bufor na "YYYY-MM-DD\0"
+  constexpr size_t bufferSize = 11; // "YYYY-MM-DD\0"
+  char buffer[bufferSize];
   snprintf(buffer, sizeof(buffer), "%04d-%02d-%02d", dt.year(), dt.month(), dt.day());
   return String(buffer);
 }
 
 String Clock::formatTime(const DateTime& dt, bool withSeconds) {
   if (withSeconds) {
-    char buffer[9]; // Bufor na "HH:MM:SS\0"
+    constexpr size_t bufferSize = 9; // "HH:MM:SS\0"
+    char buffer[bufferSize];
     snprintf(buffer, sizeof(buffer), "%02d:%02d:%02d", dt.hour(), dt.minute(), dt.second());
     return String(buffer);
   } else {
-    char buffer[6]; // Bufor na "HH:MM\0"
+    constexpr size_t bufferSize = 6; // "HH:MM\0"
+    char buffer[bufferSize];
     snprintf(buffer, sizeof(buffer), "%02d:%02d", dt.hour(), dt.minute());
     return String(buffer);
   }
@@ -41,7 +42,7 @@ void Clock::configureForAlarm() {
   rtc.writeSqwPinMode(DS3231_OFF);
 }
 
-float Clock::getTemperature() {
+float Clock::getTemperature() const {
   float temp = rtc.getTemperature();
   // Dodajemy warunek sprawdzający, czy odczyt jest prawidłowy.
   // Niektóre biblioteki i czujniki w razie błędu zwracają -127.
@@ -55,7 +56,7 @@ void Clock::adjust(const DateTime& dt) {
   rtc.adjust(dt);
 }
 
-bool Clock::lostPower() {
+bool Clock::lostPower() const {
   return rtc.lostPower();
 }
 
@@ -63,6 +64,6 @@ bool Clock::setAlarm1(const DateTime& dt, Ds3231Alarm1Mode alarm_mode) {
   return rtc.setAlarm1(dt, alarm_mode);
 }
 
-bool Clock::alarmFired(uint8_t alarm_num) { return rtc.alarmFired(alarm_num); }
+bool Clock::alarmFired(uint8_t alarm_num) const { return rtc.alarmFired(alarm_num); }
 
 void Clock::clearAlarm(uint8_t alarm_num) { rtc.clearAlarm(alarm_num); }

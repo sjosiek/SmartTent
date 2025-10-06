@@ -246,68 +246,10 @@ void SunTracker::handleStateMachine() {
 
         case ProgramState::RUNNING:
         {
-            // Upewnij się, że serwa są na miejscu, zanim zaczniesz odliczać czas
+            // Upewnij się, że serwa są na miejscu, zanim zaczniesz odliczać czas.
+            // Jeśli tak, wywołaj dedykowaną funkcję do obsługi logiki śledzenia.
             if (horizontalServo.hasReachedTarget() && verticalServo.hasReachedTarget()) {
-                // Jeśli to pierwsze wejście po dotarciu na miejsce, uruchom timer
-                if (lastRunningUpdateTime == 0) {
-                    lastRunningUpdateTime = millis();
-                    Serial.println(F("Cel osiągnięty. Rozpoczynam cykliczne śledzenie..."));
-                }
-
-                // Czekaj na upłynięcie interwału aktualizacji
-                if (millis() - lastRunningUpdateTime >= config.runningUpdateIntervalMs) {
-                    lastRunningUpdateTime = millis(); // Zresetuj timer na następny interwał
-                    Serial.println(F("Odczytuję dane z LDR"));
-
-                    int raw_tl = analogRead(pins.ldrTopLeftPin);
-                    int raw_tr = analogRead(pins.ldrTopRightPin);
-                    int raw_dl = analogRead(pins.ldrDownLeftPin);
-                    int raw_dr = analogRead(pins.ldrDownRightPin);
-
-                    topLeftVal   = normalizeLDR(raw_tl, static_cast<int>(LdrPin::TopLeft));
-                    topRightVal  = normalizeLDR(raw_tr, static_cast<int>(LdrPin::TopRight));
-                    downLeftVal  = normalizeLDR(raw_dl, static_cast<int>(LdrPin::DownLeft));
-                    downRightVal = normalizeLDR(raw_dr, static_cast<int>(LdrPin::DownRight));
-
-                    int servoMoveSpeed = config.defaultServoSpeed;
-                    int tolerance = config.defaultTolerance;
-
-                    horizontalServo.setSpeed(servoMoveSpeed);
-                    verticalServo.setSpeed(servoMoveSpeed);
-
-                    int sumTop = topLeftVal + topRightVal;
-                    int sumDown = downLeftVal + downRightVal;
-                    int sumLeft = topLeftVal + downLeftVal;
-                    int sumRight = topRightVal + downRightVal;
-
-                    verticalDiff   = sumTop - sumDown;
-                    horizontalDiff = sumLeft - sumRight;
-                    
-                    if (abs(verticalDiff) > tolerance) {
-                        if (sumTop > sumDown) {
-                            if (config.enableServoMovement) verticalServo.reverseMoveUp();
-                        } else {
-                            if (config.enableServoMovement) verticalServo.reverseMoveDown();
-                        }
-                    }
-                    if (abs(horizontalDiff) > tolerance) {
-                        if (sumLeft > sumRight) {
-                            if (config.enableServoMovement) horizontalServo.reverseMoveLeft();
-                        } else {
-                            if (config.enableServoMovement) horizontalServo.reverseMoveRight();
-                        }
-                    }
-
-                    // ZMIANA: Przenosimy logowanie informacji o stanie RUNNING tutaj.
-                    // Dzięki temu komunikat pojawi się tylko raz, po wykonaniu aktualizacji (co 5 minut),
-                    // a nie co 500ms, jak to było w funkcji printDebugInfo().
-                    if (config.enableDebugPrint) {
-                        Serial.print(F("  -> LDR(TL,TR,DL,DR): "));
-                        Serial.print(topLeftVal); Serial.print(F(",")); Serial.print(topRightVal); Serial.print(F(","));
-                        Serial.print(downLeftVal); Serial.print(F(",")); Serial.println(downRightVal);
-                        Serial.print(F("  -> Diffs(H,V): ")); Serial.print(horizontalDiff); Serial.print(F(",")); Serial.println(verticalDiff);
-                    }
-                }
+                handleTrackingLogic();
             }
         }
         break;
@@ -414,6 +356,57 @@ void SunTracker::printDebugInfo() {
                 Serial.println(verticalServo.getCurrentPosition());
                 break;
         }
+    }
+}
+
+void SunTracker::handleTrackingLogic() {
+    // Jeśli to pierwsze wejście po dotarciu na miejsce, uruchom timer
+    if (lastRunningUpdateTime == 0) {
+        lastRunningUpdateTime = millis();
+        Serial.println(F("Cel osiągnięty. Rozpoczynam cykliczne śledzenie..."));
+    }
+
+    // Czekaj na upłynięcie interwału aktualizacji
+    if (millis() - lastRunningUpdateTime < config.runningUpdateIntervalMs) {
+        return; // Czas jeszcze nie minął
+    }
+
+    lastRunningUpdateTime = millis(); // Zresetuj timer na następny interwał
+    Serial.println(F("Odczytuję dane z LDR w celu korekty pozycji..."));
+
+    int raw_tl = analogRead(pins.ldrTopLeftPin);
+    int raw_tr = analogRead(pins.ldrTopRightPin);
+    int raw_dl = analogRead(pins.ldrDownLeftPin);
+    int raw_dr = analogRead(pins.ldrDownRightPin);
+
+    topLeftVal   = normalizeLDR(raw_tl, static_cast<int>(LdrPin::TopLeft));
+    topRightVal  = normalizeLDR(raw_tr, static_cast<int>(LdrPin::TopRight));
+    downLeftVal  = normalizeLDR(raw_dl, static_cast<int>(LdrPin::DownLeft));
+    downRightVal = normalizeLDR(raw_dr, static_cast<int>(LdrPin::DownRight));
+
+    horizontalServo.setSpeed(config.defaultServoSpeed);
+    verticalServo.setSpeed(config.defaultServoSpeed);
+
+    int sumTop = topLeftVal + topRightVal;
+    int sumDown = downLeftVal + downRightVal;
+    int sumLeft = topLeftVal + downLeftVal;
+    int sumRight = topRightVal + downRightVal;
+
+    verticalDiff   = sumTop - sumDown;
+    horizontalDiff = sumLeft - sumRight;
+    
+    if (abs(verticalDiff) > config.defaultTolerance) {
+        if (sumTop > sumDown) { if (config.enableServoMovement) verticalServo.reverseMoveUp(); } 
+        else { if (config.enableServoMovement) verticalServo.reverseMoveDown(); }
+    }
+    if (abs(horizontalDiff) > config.defaultTolerance) {
+        if (sumLeft > sumRight) { if (config.enableServoMovement) horizontalServo.reverseMoveLeft(); } 
+        else { if (config.enableServoMovement) horizontalServo.reverseMoveRight(); }
+    }
+
+    if (config.enableDebugPrint) {
+        Serial.print(F("  -> LDR(TL,TR,DL,DR): ")); Serial.print(topLeftVal); Serial.print(F(",")); Serial.print(topRightVal); Serial.print(F(",")); Serial.print(downLeftVal); Serial.print(F(",")); Serial.println(downRightVal);
+        Serial.print(F("  -> Diffs(H,V): ")); Serial.print(horizontalDiff); Serial.print(F(",")); Serial.println(verticalDiff);
     }
 }
 

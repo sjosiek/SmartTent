@@ -47,7 +47,8 @@ void CommandHandler::update() {
       int firstColon = command.indexOf(':');
       int secondColon = command.indexOf(':', firstColon + 1);
 
-      if (firstColon != -1 && secondColon != -1) {
+      // Dodatkowe sprawdzenie, czy drugi dwukropek jest za pierwszym
+      if (firstColon > -1 && secondColon > firstColon) {
         int servoIndex = command.substring(firstColon + 1, secondColon).toInt();
         int position = command.substring(secondColon + 1).toInt();
 
@@ -58,7 +59,7 @@ void CommandHandler::update() {
           Serial.println(position);
           _servos[servoIndex].setTargetPosition(position);
         } else {
-          Serial.println(F("BŁĄD: Nieprawidłowy indeks serwa."));
+          Serial.println(F("BŁĄD: Nieprawidłowy indeks serwa lub format komendy."));
         }
       }
     } else if (command.startsWith("SERVO_MOVE:")) {
@@ -66,7 +67,7 @@ void CommandHandler::update() {
       int firstColon = command.indexOf(':');
       int secondColon = command.indexOf(':', firstColon + 1);
 
-      if (firstColon != -1 && secondColon != -1) {
+      if (firstColon > -1 && secondColon > firstColon) {
           int servoIndex = command.substring(firstColon + 1, secondColon).toInt();
           String direction = command.substring(secondColon + 1);
           direction.toUpperCase();
@@ -80,7 +81,7 @@ void CommandHandler::update() {
                   Serial.println(F("BŁĄD: Nieprawidłowy kierunek (użyj LEFT lub RIGHT)."));
               }
           } else {
-              Serial.println(F("BŁĄD: Nieprawidłowy indeks serwa."));
+              Serial.println(F("BŁĄD: Nieprawidłowy indeks serwa lub format komendy."));
           }
       }
     } else if (command == "CALIBRATE_SERVOS") {

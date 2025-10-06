@@ -220,6 +220,45 @@ void setup() {
   }
 }
 
+// --- Prywatna funkcja pomocnicza do obsługi logiki w trybie aktywnym ---
+void handleActiveMode() {
+  // Obsługa przycisku dotykowego do resetowania timera uśpienia
+  if (SLEEP_MODE_ENABLED) {
+    touchSensor.update();
+    if (touchSensor.wasPressed()) {
+      powerManager.resetActiveTimer();
+    }
+  }
+
+  // Cykliczny odczyt czujników i aktualizacja danych
+  if (sensorUpdateTimer.isReady()) {
+    sensor.readData();
+    dhtSensor.readData();
+
+    DateTime now = clock.getTime();
+    g_sensorData.dateStr = Clock::formatDate(now);
+    g_sensorData.timeForLcd = Clock::formatTime(now, true);
+    g_sensorData.timeForLed = Clock::formatTime(now, false);
+
+    g_sensorData.temp_bme = sensor.getTemperature();
+    g_sensorData.hum_bme = sensor.getHumidity();
+    g_sensorData.pressure_bme = sensor.getPressure();
+    g_sensorData.temp_rtc = clock.getTemperature();
+    g_sensorData.temp_dht = dhtSensor.getTemperature();
+    g_sensorData.hum_dht = dhtSensor.getHumidity();
+
+    lcd.update(g_sensorData);
+    sdCard.logSensorData(g_sensorData, "datalog.txt");
+  }
+
+  // Aktualizacja wyświetlacza LED
+  if (ledUpdateTimer.isReady()) {
+    if (g_sensorData.timeForLed.length() > 0) {
+      led.update(g_sensorData.timeForLed);
+    }
+  }
+}
+
 void loop() {
   commandHandler.update(); // Sprawdzaj, czy przyszła komenda synchronizacji
 
@@ -251,55 +290,12 @@ void loop() {
   }
 
   if (!SLEEP_MODE_ENABLED || powerManager.isAwake()) {
-    
-    // Obsługa przycisku za pomocą nowej, czystej klasy
-    if (SLEEP_MODE_ENABLED) {
-      touchSensor.update(); // Zawsze aktualizujemy stan przycisku
-      
-      if (touchSensor.wasPressed()) {
-        powerManager.resetActiveTimer();
-      }
-    }
-
-    
-    if (sensorUpdateTimer.isReady()) { 
-      sensor.readData(); 
-      g_sensorData.temp_bme = sensor.getTemperature(); 
-      g_sensorData.hum_bme = sensor.getHumidity();
-      g_sensorData.pressure_bme = sensor.getPressure();
-      g_sensorData.temp_rtc = clock.getTemperature();
-      
-      dhtSensor.readData();
-      g_sensorData.temp_dht = dhtSensor.getTemperature();
-      g_sensorData.hum_dht = dhtSensor.getHumidity();
-
-      DateTime now = clock.getTime(); // Pobierz czas tylko raz
-      g_sensorData.dateStr = Clock::formatDate(now);
-      g_sensorData.timeForLcd = Clock::formatTime(now, true);
-      g_sensorData.timeForLed = Clock::formatTime(now, false);
-      
-      // Zapisujemy pozycje pierwszych dwóch serw do wyświetlenia na LCD
-      // UWAGA: Ta część nadal jest "na sztywno" dla 2 serw z powodu ograniczeń wyświetlacza.
-      // Można to rozbudować o system przełączania ekranów.
-      
-      // g_sensorData.servo1_pos = (SERVO_COUNT > 0) ? servos[0].getCurrentPosition() : 0;
-      // g_sensorData.servo2_pos = (SERVO_COUNT > 1) ? servos[1].getCurrentPosition() : 0;
-      
-
-      lcd.update(g_sensorData);
-      
-      // Zapisujemy dane na karcie SD przy każdym nowym odczycie
-      sdCard.logSensorData(g_sensorData, "datalog.txt");
-    }
-
-    if (ledUpdateTimer.isReady()) { 
-      if (g_sensorData.timeForLed.length() > 0) led.update(g_sensorData.timeForLed);
-    }
+    // Wywołujemy nową, wydzieloną funkcję
+    handleActiveMode();
     
     if (heartbeatTimer.isReady()) { 
       Serial.println(F("\nHEARTBEAT (Aktywny)\n"));
 
-      // ZMIANA: Wyświetlanie danych z SunTrackera
       int ldr_tl, ldr_tr, ldr_dl, ldr_dr;
       sunTracker.getLdrValues(ldr_tl, ldr_tr, ldr_dl, ldr_dr);
 

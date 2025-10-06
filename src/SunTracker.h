@@ -84,6 +84,7 @@ private:
     int normalizeLDR(int rawValue, int ldrIndex);
     void handleStateMachine();
     void printDebugInfo();
+    void handleTrackingLogic(); // Nowa metoda do logiki śledzenia
 
     // --- Obiekty i konfiguracja ---
     SunTrackerPins pins;
