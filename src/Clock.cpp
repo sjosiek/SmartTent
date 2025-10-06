@@ -9,7 +9,7 @@ bool Clock::init() {
   return rtc.begin();
 }
 
-DateTime Clock::getTime() const {
+DateTime Clock::getTime() {
   return rtc.now();
 }
 
@@ -42,7 +42,7 @@ void Clock::configureForAlarm() {
   rtc.writeSqwPinMode(DS3231_OFF);
 }
 
-float Clock::getTemperature() const {
+float Clock::getTemperature() {
   float temp = rtc.getTemperature();
   // Dodajemy warunek sprawdzający, czy odczyt jest prawidłowy.
   // Niektóre biblioteki i czujniki w razie błędu zwracają -127.
@@ -56,7 +56,7 @@ void Clock::adjust(const DateTime& dt) {
   rtc.adjust(dt);
 }
 
-bool Clock::lostPower() const {
+bool Clock::lostPower() {
   return rtc.lostPower();
 }
 
@@ -64,6 +64,6 @@ bool Clock::setAlarm1(const DateTime& dt, Ds3231Alarm1Mode alarm_mode) {
   return rtc.setAlarm1(dt, alarm_mode);
 }
 
-bool Clock::alarmFired(uint8_t alarm_num) const { return rtc.alarmFired(alarm_num); }
+bool Clock::alarmFired(uint8_t alarm_num) { return rtc.alarmFired(alarm_num); }
 
 void Clock::clearAlarm(uint8_t alarm_num) { rtc.clearAlarm(alarm_num); }
