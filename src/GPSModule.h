@@ -1,41 +1,42 @@
-// GPSModule.h
-
-#ifndef GPSMODULE_H
-#define GPSMODULE_H
+#ifndef GPS_MODULE_H
+#define GPS_MODULE_H
 
 #include <Arduino.h>
-#include <SoftwareSerial.h> // Jeśli używasz innego pinu niż RX/TX
-#include <TinyGPS++.h>
+#include <NMEAGPS.h>
 
 class GPSModule {
 public:
-  GPSModule(uint8_t rxPin, uint8_t txPin);
-  bool begin();
-  void update();
+  // Konstruktor
+  GPSModule(Stream &gpsStream);
 
-  float getLatitude();
-  float getLongitude();
-  float getAltitude();
-  float getCourse();
-  float getSpeedKmph();
-  float getSpeedKnots();
-  uint8_t getSatellites();
+  // Metody publiczne
+  void begin();
+  bool update();
+
+  // Gettery do danych
+  bool isDataValid() const;
+  float getLatitude() const;
+  float getLongitude() const;
+  float getAltitude() const;
+  float getSpeedKph() const;
+  float getSpeedKts() const;
+  float getHeading() const;
+  uint8_t getSatellites() const;
 
 private:
-  SoftwareSerial ss;
-  TinyGPSPlus gps;
-
-  uint8_t _rxPin;
-  uint8_t _txPin;
-
-  float latitude = 0.0;
-  float longitude = 0.0;
-  float altitude = 0.0;
-  uint8_t satellites = 0;
-
-  float course = 0.0;
-  float speedKmph = 0.0;
-  float speedKnots = 0.0;
+  // Zmienne prywatne
+  Stream &_gpsStream;
+  NMEAGPS _gps;
+  gps_fix _fix;
+  
+  bool _isValid;
+  float _latitude;
+  float _longitude;
+  float _altitude;
+  float _speed_kph;
+  float _speed_kts;
+  float _heading;
+  uint8_t _satellites;
 };
 
 #endif

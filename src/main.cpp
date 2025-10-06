@@ -19,6 +19,7 @@
 #include "SensorData.h"      // Dołączamy strukturę danych
 #include "SunTracker.h"      // SUnTracker
 #include "ControlPanel.h"    // Dołączamy klasę panelu sterowania
+#include "GPSModule.h"    // GPS
 
 // --- Konfiguracja działania trackera---
 // Zmieniono na standardową inicjalizację C++, aby zapewnić kompatybilność z kompilatorem avr-gcc.
@@ -305,8 +306,8 @@ void loop() {
       char buffer[128];
       snprintf(buffer, sizeof(buffer),
                "Czas: %s | Temp(Z/N): %.1f/%.1fC | Wilg(Z/N): %.0f/%.0f%% | Cisn: %.1fhPa",
-               g_sensorData.timeForLcd.c_str(), g_sensorData.temp_bme, g_sensorData.temp_dht,
-               g_sensorData.hum_bme, g_sensorData.hum_dht, g_sensorData.pressure_bme);
+               g_sensorData.timeForLcd.c_str(), (double)g_sensorData.temp_bme, (double)g_sensorData.temp_dht,
+               (double)g_sensorData.hum_bme, (double)g_sensorData.hum_dht, (double)g_sensorData.pressure_bme);
       Serial.println(buffer);
       snprintf(buffer, sizeof(buffer),
                "Serva(H/V): %d/%d | LDR(TL,TR,DL,DR): %d,%d,%d,%d",

@@ -1,84 +1,56 @@
-// GPSModule.cpp
-
 #include "GPSModule.h"
 
-GPSModule::GPSModule(uint8_t rxPin, uint8_t txPin) : _rxPin(rxPin), _txPin(txPin), ss(_rxPin, _txPin) {}
-
-bool GPSModule::begin() {
-  ss.begin(9600);
-  return true;
+GPSModule::GPSModule(Stream &gpsStream) : _gpsStream(gpsStream) {
+  // Zerowanie wartości początkowych
+  _isValid = false;
+  _latitude = 0.0;
+  _longitude = 0.0;
+  _altitude = 0.0;
+  _speed_kph = 0.0;
+  _speed_kts = 0.0;
+  _heading = 0.0;
+  _satellites = 0;
 }
 
-void GPSModule::update() {
-  while (ss.available() > 0) {
-    gps.encode(ss.read());
+void GPSModule::begin() {
+  // Pusta metoda, port szeregowy jest inicjowany w głównym pliku
+}
+
+bool GPSModule::update() {
+  if (_gps.available(_gpsStream)) {
+    _fix = _gps.read();
+    
+    _isValid = _fix.valid.location;
+    
+    if (_fix.valid.location) {
+      _latitude = _fix.latitude();
+      _longitude = _fix.longitude();
+    }
+    if (_fix.valid.altitude) {
+      _altitude = _fix.altitude();
+    }
+    if (_fix.valid.speed) {
+      _speed_kph = _fix.speed_kph();
+      _speed_kts = _fix.speed(); // NeoGPS speed() returns knots
+    }
+    if (_fix.valid.heading) {
+      _heading = _fix.heading();
+    }
+    if (_fix.valid.satellites) {
+      _satellites = _fix.satellites;
+    }
+    
+    return true;
   }
-
-  if (gps.location.isValid()) {
-    latitude = gps.location.lat();
-    longitude = gps.location.lng();
-  } else {
-        Serial.print(F("INVALID"));
-  }
-
-    if (gps.altitude.isValid()) {
-    altitude = gps.altitude.meters();
-  } else {
-        Serial.print(F("INVALID"));
-  }
-
-  if (gps.satellites.isValid()) {
-    satellites = gps.satellites.value();
-  } else {
-        Serial.print(F("INVALID"));
-  }
-    if (gps.course.isValid()) {
-    course = gps.course.deg();
-  } else {
-        Serial.print(F("INVALID"));
-  }
-
-      if (gps.speed.isValid()) {
-    speedKmph = gps.speed.kmph();
-        speedKnots = gps.speed.knots();
-  } else {
-        Serial.print(F("INVALID"));
-  }
-
-  Serial.print(F("Lat: "));
-  Serial.println(latitude, 6);
-  Serial.print(F(" Lon: "));
-  Serial.println(longitude, 6);
-  Serial.print(F(" Alt: "));
-  Serial.println(altitude);
-   Serial.print(F(" Sats: "));
-  Serial.println(satellites);
+  return false;
 }
 
-float GPSModule::getLatitude() {
-  return latitude;
-}
-
-float GPSModule::getLongitude() {
-  return longitude;
-}
-
-float GPSModule::getAltitude() {
-  return altitude;
-}
-float GPSModule::getCourse() {
-  return course;
-}
-
-float GPSModule::getSpeedKmph() {
-  return speedKmph;
-}
-
-float GPSModule::getSpeedKnots() {
-  return speedKnots;
-}
-
-
-uint8_t GPSModule::getSatellites() {
-  return satellites;
-}
+// Implementacja getterów
+bool GPSModule::isDataValid() const { return _isValid; }
+float GPSModule::getLatitude() const { return _latitude; }
+float GPSModule::getLongitude() const { return _longitude; }
+float GPSModule::getAltitude() const { return _altitude; }
+float GPSModule::getSpeedKph() const { return _speed_kph; }
+float GPSModule::getSpeedKts() const { return _speed_kts; }
+float GPSModule::getHeading() const { return _heading; }
+uint8_t GPSModule::getSatellites() const { return _satellites; }
