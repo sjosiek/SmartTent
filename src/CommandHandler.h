@@ -5,17 +5,19 @@
 
 #include <Arduino.h>
 #include "Clock.h"
+#include "LcdDisplay.h" // Dołączamy LcdDisplay
 #include "SDCard.h"
 #include "ProjectConfig.h"
 #include "SmoothServo.h"
 
 class CommandHandler {
 public:
-  CommandHandler(Clock& clock, SDCard& sdCard, Configuration& config, SmoothServo* servos, int servoCount);
+  CommandHandler(Clock& clock, LcdDisplay& lcd, SDCard& sdCard, Configuration& config, SmoothServo* servos, int servoCount);
   void update();
 
 private:
   Clock* _clock;
+  LcdDisplay* _lcd;
   SDCard* _sdCard;
   Configuration* _config;
   SmoothServo* _servos;

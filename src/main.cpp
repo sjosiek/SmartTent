@@ -119,7 +119,7 @@ SmoothServo servos[max(1, SERVO_COUNT)];
 SensorData g_sensorData; // Zastępujemy wiele zmiennych globalnych jedną strukturą
 Configuration g_config;  // Globalny obiekt przechowujący konfigurację
  
-CommandHandler commandHandler(clock, sdCard, g_config, servos, SERVO_COUNT); // Przekazujemy tablicę do CommandHandler
+CommandHandler commandHandler(clock, lcd, sdCard, g_config, servos, SERVO_COUNT); // Przekazujemy tablicę do CommandHandler
  
  
 Timer sensorUpdateTimer(1000); // Domyślny interwał, zostanie nadpisany przez konfigurację z SD
@@ -138,63 +138,64 @@ void setup() {
   // Ustawienie timeoutu dla magistrali I2C, aby uniknąć zawieszenia programu.
   Wire.setWireTimeout(I2C_TIMEOUT_US, true);
 
-  if (!clock.init()) {
-    Serial.println(F("Błąd inicjalizacji zegara RTC!"));
-    //while (1); // Zatrzymanie programu, krytyczny błąd. Odkomentuj w wersji finalnej.
-  } else {
-    Serial.println(F("Zegar RTC OK."));
-    clock.configureForAlarm(); // KONIECZNIE: Konfigurujemy pin SQW do pracy jako przerwanie.
-    // Na wszelki wypadek czyścimy flagę alarmu, gdyby system został zresetowany w trakcie jego trwania.
-    clock.clearAlarm(1);
-    // Sprawdzamy, czy zegar nie stracił zasilania i nie zresetował się do domyślnej daty
-    if (clock.lostPower()) {
-      Serial.println(F("RTC stracił zasilanie! Ustawiam czas na czas kompilacji."));
-      // Poniższa linia ustawi czas na datę i godzinę kompilacji tego szkicu
-      clock.adjust(DateTime(F(__DATE__), F(__TIME__)));
-    }
-  }
-    
+  // ZMIANA: Inicjalizacja LCD na początku, aby wyświetlać status uruchamiania
+  lcd.init();
+  lcd.clear();
+  lcd.setCursor(0, 0);
+  lcd.print("Boot: SmartTent...");
+
   if (SLEEP_MODE_ENABLED) {
     Serial.println(F("Tryb oszczędzania energii WŁĄCZONY."));
     powerManager.begin(clock, lcd, led, sensor, dhtSensor);
   } else {
     Serial.println(F("Tryb oszczędzania energii WYŁĄCZONY. System będzie działał w trybie ciągłym."));
     pinMode(POWER_CONTROL_PIN, OUTPUT);
-
-    // ZMIANA: Używamy teraz publicznej metody z PowerManagera do włączenia zasilania
     powerManager.powerUpPeripherals();
-
-    // Inicjalizujemy resztę modułów
-    if (!sensor.init()) {
-      Serial.println(F("Błąd inicjalizacji czujnika BME280!"));
-    } else {
-      Serial.println(F("Czujnik BME280 OK."));
-    }
-
-    dhtSensor.init();
-    Serial.println(F("Czujnik DHT11 zainicjalizowany."));
-
-   
-    lcd.init(); 
-    Serial.println(F("Wyświetlacz LCD zainicjalizowany."));
-
-    led.init(10);
-    Serial.println(F("Wyświetlacz LED zainicjalizowany."));
-    
-    lcd.printWelcomeMessage();
-
-    Serial.println("SunTracker zainicjalizowany.");
-
-    sunTracker.begin();
-    
   }
   
+  // ZMIANA: Wyświetlanie statusu inicjalizacji na LCD
+  if (clock.init()) {
+    Serial.println(F("Zegar RTC OK."));
+    lcd.printStatus("Zegar RTC", "OK", 1);
+    clock.configureForAlarm();
+    clock.clearAlarm(1);
+    if (clock.lostPower()) {
+      Serial.println(F("RTC stracił zasilanie! Ustawiam czas na czas kompilacji."));
+      // ZMIANA: Aktualizujemy status na LCD, informując o synchronizacji
+      lcd.printStatus("Zegar RTC", "LOST POWER -> SYNC", 1);
+      clock.adjust(DateTime(F(__DATE__), F(__TIME__)));
+    }
+  } else {
+    Serial.println(F("Błąd inicjalizacji zegara RTC!"));
+    lcd.printStatus("Zegar RTC", "FAIL", 1);
+  }
+
+  if (sensor.init()) {
+    Serial.println(F("Czujnik BME280 OK."));
+    lcd.printStatus("BME280", "OK", 2);
+  } else {
+    Serial.println(F("Błąd inicjalizacji czujnika BME280!"));
+    lcd.printStatus("BME280", "FAIL", 2);
+  }
+
+  dhtSensor.init();
+  // Dodajemy informację o statusie DHT11 na LCD
+  lcd.printStatus("DHT11", "OK", 3); // ZMIANA: Przeniesiono do wiersza 3
+  Serial.println(F("Czujnik DHT11 zainicjalizowany."));
+
   // Inicjalizacja panelu sterowania (zawsze, niezależnie od trybu)
   controlPanel.begin();
   Serial.println(F("Panel sterowania zainicjalizowany."));
 
+  // ZMIANA: Dodajemy informację o gotowości CommandHandler
+  lcd.printStatus("Cmd Handler", "OK", 3);
+
   // Inicjalizacja karty SD (zawsze, niezależnie od trybu uśpienia)
-  sdCard.init();
+  if (sdCard.init()) {
+    lcd.printStatus("Karta SD", "OK", 0); // ZMIANA: Przeniesiono do wiersza 0
+  } else {
+    lcd.printStatus("Karta SD", "FAIL", 0); // ZMIANA: Przeniesiono do wiersza 0
+  }
 
   // Odczyt pliku konfiguracyjnego
   if (sdCard.readConfiguration("config.txt", g_config)) {
@@ -218,6 +219,15 @@ void setup() {
     // Można tu dodać logikę ustawiania różnych pozycji startowych, np. z pliku konfiguracyjnego
     servos[i].begin(servoConfigs[i].pin, servoConfigs[i].name, 0);
   }
+
+  // Inicjalizacja pozostałych modułów, które nie zwracają statusu
+  sunTracker.begin();
+  Serial.println("SunTracker zainicjalizowany.");
+  led.init(g_config.ledBrightness);
+  Serial.println(F("Wyświetlacz LED zainicjalizowany."));
+
+  delay(2000); // Czas na odczytanie statusu
+  lcd.printWelcomeMessage();
 }
 
 // --- Prywatna funkcja pomocnicza do obsługi logiki w trybie aktywnym ---

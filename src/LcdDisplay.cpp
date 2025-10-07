@@ -43,6 +43,15 @@ void LcdDisplay::printWelcomeMessage() {
 #pragma GCC diagnostic ignored "-Wformat"
 void LcdDisplay::update(const SensorData& data) {
   if (!_isInitialized) {
+    // Jeśli wyświetlacz nie jest zainicjalizowany, spróbuj go zainicjować.
+    _isInitialized = checkAndInit();
+    if (!_isInitialized) return;
+  }
+
+  // ZMIANA: Sprawdzamy, czy aktywna jest wiadomość tymczasowa.
+  if (_isTempMessageActive && millis() < _tempMessageEndTime) {
+    return; // Jeśli tak, nie nadpisujemy jej danymi z czujników.
+  } else if (_isTempMessageActive) {
     // Jeśli wyświetlacz nie jest zainicjalizowany (np. po utracie zasilania),
     // spróbuj go zainicjalizować ponownie.
     _isInitialized = checkAndInit();
@@ -50,6 +59,7 @@ void LcdDisplay::update(const SensorData& data) {
       // Jeśli inicjalizacja się nie powiodła, nie próbuj pisać, aby uniknąć śmieci.
       return;
     }
+    _isTempMessageActive = false; // Czas minął, dezaktywujemy flagę.
   }
   char buffer[21]; // Bufor na formatowane linie
 
@@ -80,6 +90,40 @@ void LcdDisplay::update(const SensorData& data) {
 }
 #pragma GCC diagnostic pop
 
+void LcdDisplay::printStatus(const char* module, const char* status, int row) {
+  if (!_isInitialized) return;
+  lcd.setCursor(0, row);
+  char buffer[21]; // 20 kolumn + znak null
+
+  // Formatowanie z wyrównaniem do lewej, aby statusy były w jednej linii
+  // np. "Zegar RTC        [OK]"
+  snprintf(buffer, sizeof(buffer), "%-16s [%s]", module, status);
+  lcd.print(buffer);
+}
+
+void LcdDisplay::showTemporaryMessage(const char* line1, const char* line2, uint32_t duration) {
+  if (!_isInitialized) return;
+  
+  lcd.clear();
+  lcd.setCursor(0, 1);
+  lcd.print(line1);
+  lcd.setCursor(0, 2);
+  lcd.print(line2);
+  
+  _tempMessageEndTime = millis() + duration;
+  _isTempMessageActive = true;
+}
+
+void LcdDisplay::setCursor(uint8_t col, uint8_t row) {
+  if (!_isInitialized) return;
+  lcd.setCursor(col, row);
+}
+
+void LcdDisplay::print(const char* text) {
+  if (!_isInitialized) return;
+  lcd.print(text);
+}
+
 void LcdDisplay::clear() {
   lcd.clear();
 }
@@ -88,6 +132,16 @@ void LcdDisplay::noBacklight() {
   lcd.noBacklight();
 }
 
+void LcdDisplay::backlight() {
+  lcd.backlight();
+}
+
+
+void LcdDisplay::printSleepMessage() {
+  lcd.clear();
+  lcd.setCursor(0, 1);
+  lcd.print("      Dobranoc!");
+}
 void LcdDisplay::backlight() {
   lcd.backlight();
 }

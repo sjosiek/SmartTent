@@ -14,6 +14,11 @@ public:
   void printWelcomeMessage();
   void printSleepMessage(); // NOWA METODA
   void update(const SensorData& data);
+  void printStatus(const char* module, const char* status, int row); // NOWA METODA
+  void showTemporaryMessage(const char* line1, const char* line2, uint32_t duration);
+  // NOWE METODY: Umożliwiają ustawienie kursora i wypisanie tekstu
+  void setCursor(uint8_t col, uint8_t row);
+  void print(const char* text);
   void clear();
   void noBacklight();
   void backlight();
@@ -23,6 +28,9 @@ private:
   LiquidCrystal_I2C lcd;
   uint8_t _address;
   bool _isInitialized;
+  // ZMIANA: Zmienne do obsługi wiadomości tymczasowych
+  uint32_t _tempMessageEndTime = 0;
+  bool _isTempMessageActive = false;
 };
 
 #endif
