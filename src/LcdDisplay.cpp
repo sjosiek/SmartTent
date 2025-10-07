@@ -35,6 +35,12 @@ void LcdDisplay::printWelcomeMessage() {
   lcd.print("    System online");
 }
 
+void LcdDisplay::printSleepMessage() {
+  lcd.clear();
+  lcd.setCursor(0, 1);
+  lcd.print(F("      Dobranoc!"));
+}
+
 // Używamy pragm kompilatora, aby lokalnie wyłączyć ostrzeżenie o formatowaniu.
 // To uporczywe ostrzeżenie wynika ze specyfiki kompilacji na platformę AVR.
 // Jesteśmy pewni, że kod jest bezpieczny, więc możemy świadomie zignorować to ostrzeżenie
