@@ -2,6 +2,7 @@
 #define CONTROL_PANEL_H
 
 #include <Arduino.h>
+#include "DebouncedButton.h" // Dołączamy nową klasę
 #include <Encoder.h>
 
 // NOWOŚĆ: Enum do reprezentowania kierunków joysticka
@@ -66,10 +67,10 @@ private:
   Encoder _encoder;
   long _encoderValue;
   int _joy1X, _joy1Y, _joy2X, _joy2Y;
-  bool _joy1BtnState, _joy2BtnState, _encBtnState;
-  bool _lastJoy1BtnState, _lastJoy2BtnState, _lastEncBtnState;
-  bool _joy1Clicked, _joy2Clicked, _encClicked;
 
+  // ZMIANA: Używamy dedykowanej klasy do obsługi przycisków
+  DebouncedButton _joy1Button, _joy2Button, _encButton;
+  
   // NOWOŚĆ: Zmienne do obsługi martwego pola
   int _joyCenter;
   int _joyDeadZone;
