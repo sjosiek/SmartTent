@@ -27,6 +27,13 @@ struct SensorData {
   float gps_lon;
   float gps_alt;
   uint8_t gps_sats;
+  bool gps_time_valid;
+  uint16_t gps_year;
+  uint8_t gps_month;
+  uint8_t gps_day;
+  uint8_t gps_hour;
+  uint8_t gps_minute;
+  uint8_t gps_second;
 };
 
 #endif

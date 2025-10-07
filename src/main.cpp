@@ -320,6 +320,13 @@ void handleActiveMode() {
     g_sensorData.gps_lon = gps.getLongitude();
     g_sensorData.gps_alt = gps.getAltitude();
     g_sensorData.gps_sats = gps.getSatellites();
+    g_sensorData.gps_time_valid = gps.isDateTimeValid();
+    g_sensorData.gps_year = gps.getYear();
+    g_sensorData.gps_month = gps.getMonth();
+    g_sensorData.gps_day = gps.getDay();
+    g_sensorData.gps_hour = gps.getHour();
+    g_sensorData.gps_minute = gps.getMinute();
+    g_sensorData.gps_second = gps.getSecond();
 
 
     lcd.update(g_sensorData);

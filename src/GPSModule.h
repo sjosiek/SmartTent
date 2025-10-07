@@ -23,6 +23,15 @@ public:
   float getHeading() const;
   uint8_t getSatellites() const;
 
+  // Nowe gettery do daty i czasu
+  bool isDateTimeValid() const;
+  uint16_t getYear() const;
+  uint8_t getMonth() const;
+  uint8_t getDay() const;
+  uint8_t getHour() const;
+  uint8_t getMinute() const;
+  uint8_t getSecond() const;
+
 private:
   // Zmienne prywatne
   Stream &_gpsStream;
@@ -37,6 +46,15 @@ private:
   float _speed_kts;
   float _heading;
   uint8_t _satellites;
+
+  // Nowe zmienne prywatne do daty i czasu
+  bool _isDateTimeValid;
+  uint16_t _year;
+  uint8_t _month;
+  uint8_t _day;
+  uint8_t _hour;
+  uint8_t _minute;
+  uint8_t _second;
 };
 
 #endif

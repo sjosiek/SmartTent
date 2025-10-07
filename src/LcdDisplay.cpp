@@ -114,27 +114,38 @@ void LcdDisplay::_drawGpsScreen(const SensorData& data) {
   char float_buf[12];
 
   lcd.setCursor(0, 0);
-  snprintf(buffer, sizeof(buffer), "--- Status GPS [%c] ---", data.gps_is_valid ? 'V' : 'I');
+  if (data.gps_is_valid) {
+    snprintf(buffer, sizeof(buffer), "Sats: %-2d | St: FIXED ", data.gps_sats);
+  } else {
+    snprintf(buffer, sizeof(buffer), "Sats: -- | St: SEARCH");
+  }
   lcd.print(buffer);
 
+  lcd.setCursor(0, 1);
+  if (data.gps_time_valid) {
+    snprintf(buffer, sizeof(buffer), "%04d-%02d-%02d  %02d:%02d:%02d", data.gps_year, data.gps_month, data.gps_day, data.gps_hour, data.gps_minute, data.gps_second);
+  } else {
+    snprintf(buffer, sizeof(buffer), "---- -- --  --:--:--");
+  }
+  lcd.print(buffer);
+
+  lcd.setCursor(0, 2);
   if (data.gps_is_valid) {
-    lcd.setCursor(0, 1);
     dtostrf(data.gps_lat, 4, 6, float_buf);
     snprintf(buffer, sizeof(buffer), "Lat: %s", float_buf);
-    lcd.print(buffer);
+  } else {
+    snprintf(buffer, sizeof(buffer), "Lat: ---");
+  }
+  lcd.print(buffer);
 
-    lcd.setCursor(0, 2);
+  lcd.setCursor(0, 3);
+  if (data.gps_is_valid) {
     dtostrf(data.gps_lon, 4, 6, float_buf);
     snprintf(buffer, sizeof(buffer), "Lon: %s", float_buf);
-    lcd.print(buffer);
-
-    lcd.setCursor(0, 3);
-    snprintf(buffer, sizeof(buffer), "Alt:%.1fm Sats:%d", (double)data.gps_alt, data.gps_sats);
-    lcd.print(buffer);
   } else {
-    lcd.setCursor(0, 2);
-    lcd.print(F("   Oczekiwanie na FIX"));
+    snprintf(buffer, sizeof(buffer), "Lon: ---");
   }
+  lcd.print(buffer);
 }
 
 void LcdDisplay::printStatus(const char* module, const char* status, int row) {
@@ -201,21 +212,4 @@ void LcdDisplay::noBacklight() {
 
 void LcdDisplay::backlight() {
   lcd.backlight();
-}
-
-
-void LcdDisplay::printSleepMessage() {
-  lcd.clear();
-  lcd.setCursor(0, 1);
-  lcd.print("      Dobranoc!");
-}
-void LcdDisplay::backlight() {
-  lcd.backlight();
-}
-
-
-void LcdDisplay::printSleepMessage() {
-  lcd.clear();
-  lcd.setCursor(0, 1);
-  lcd.print("      Dobranoc!");
 }
