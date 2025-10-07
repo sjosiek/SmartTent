@@ -38,14 +38,25 @@ void SDCard::logSensorData(const SensorData& data, const char* filename) {
 
   File dataFile = SD.open(filename, FILE_WRITE);
   if (dataFile) {
-    // Formatowanie danych do jednego wiersza CSV z precyzją do 2 miejsc po przecinku
-    String dataString = data.dateStr + "|" + data.timeForLcd + "|" +
-                        String(data.temp_bme, 2) + "|" + String(data.hum_bme, 2) + "|" +
-                        String(data.pressure_bme, 2) + "|" + String(data.temp_rtc, 2) + "|" +
-                        String(data.temp_dht, 2) + "|" + String(data.hum_dht, 2);
+    // ZMIANA: Używamy statycznego bufora i snprintf zamiast klasy String,
+    // aby uniknąć dynamicznej alokacji pamięci i fragmentacji sterty.
+    char buffer[128];
+    char floatBuffer[6][10]; // Bufory na 6 wartości float
 
-    dataFile.println(dataString);
-    dataFile.close(); // Bardzo ważne, aby zamknąć plik i zapisać dane!
+    // Konwertujemy wszystkie floaty na stringi za pomocą dtostrf
+    dtostrf(data.temp_bme, 4, 2, floatBuffer[0]);
+    dtostrf(data.hum_bme, 4, 2, floatBuffer[1]);
+    dtostrf(data.pressure_bme, 4, 2, floatBuffer[2]);
+    dtostrf(data.temp_rtc, 4, 2, floatBuffer[3]);
+    dtostrf(data.temp_dht, 4, 2, floatBuffer[4]);
+    dtostrf(data.hum_dht, 4, 2, floatBuffer[5]);
+
+    int written = snprintf(buffer, sizeof(buffer), "%s|%s|%s|%s|%s|%s|%s|%s",
+             data.dateStr.c_str(), data.timeForLcd.c_str(),
+             floatBuffer[0], floatBuffer[1], floatBuffer[2], floatBuffer[3], floatBuffer[4], floatBuffer[5]);
+
+    if (written > 0) dataFile.println(buffer);
+    dataFile.close();
   } else {
     // Jeśli nie można otworzyć pliku do zapisu, prawdopodobnie karta jest pełna lub uszkodzona.
     _writeErrorOccurred = true;
