@@ -62,6 +62,7 @@
 #include "SunTracker.h"      // SUnTracker
 #include "ControlPanel.h"    // Dołączamy klasę panelu sterowania
 #include "GPSModule.h"    // GPS
+#include "HardwareConfigReader.h" // Czytnik DIP switch
 
 // --- Konfiguracja działania trackera---
 // Zmieniono na standardową inicjalizację C++, aby zapewnić kompatybilność z kompilatorem avr-gcc.
@@ -79,14 +80,14 @@ const SunTrackerConfig trackerConfig = {
     90,   // servoVMaxAngle
     0,    // servoHMinAngle
     180,  // servoHMaxAngle
-    TRACKER_PERFORM_LDR_CALIBRATION,
-    TRACKER_PERFORM_SERVO_CALIBRATION,
-    TRACKER_PERFORM_INITIAL_SEARCH,
-    TRACKER_USE_JOYSTICK,
+    false, // performLdrCalibration - zostanie ustawione z DIP
+    false, // performServoCalibration - zostanie ustawione z DIP
+    false, // performInitialSearch - zostanie ustawione z DIP
+    false, // useJoystick - zostanie ustawione z DIP
     false, // usePotentiometers (nieużywane, ale musi być w inicjalizatorze)
-    TRACKER_LDR_SENSORS_CONNECTED,
-    TRACKER_ENABLE_SERVO_MOVEMENT,
-    TRACKER_ENABLE_DEBUG_PRINT,
+    false, // ldrSensorsConnected - zostanie ustawione z DIP
+    false, // enableServoMovement - zostanie ustawione z DIP
+    false, // enableDebugPrint - zostanie ustawione z DIP
     100,  // defaultServoSpeed
     50,  // defaultTolerance
     300000 // Domyślna wartość, która zostanie nadpisana z konfiguracji
@@ -131,7 +132,8 @@ const ModulePins controlPanelPins = {
   JOY1_X_PIN, JOY1_Y_PIN, JOY1_SW_PIN,
   JOY2_X_PIN, JOY2_Y_PIN, JOY2_SW_PIN,
   ENC_DT_PIN, ENC_CLK_PIN, ENC_SW_PIN,
-  BUZZER_PIN
+  BUZZER_PIN,
+  POT1_PIN, POT2_PIN, POT3_PIN, POT4_PIN // ZMIANA: Przekazujemy piny potencjometrów
 };
 
 ControlPanel controlPanel(controlPanelPins);
@@ -150,6 +152,9 @@ LedDisplay led(LED_CLK_PIN, LED_DIO_PIN);         // LED
 // ZMIANA: Inicjalizacja modułu GPS. Zakładamy, że jest podłączony do portu Serial1.
 GPSModule gps(Serial1);
 
+// ZMIANA: Inicjalizacja czytnika przełączników DIP
+HardwareConfigReader dipReader(DIP_LATCH_PIN, DIP_CLOCK_PIN, DIP_DATA_PIN);
+
 // Czujnik dotykowy jest aktywny stanem wysokim (nie ma zworek do zmiany logiki).
 DebouncedButton touchSensor(TOUCH_SENSOR_PIN, ActiveState::ACTIVE_HIGH);
 
@@ -163,6 +168,7 @@ SmoothServo servos[max(1, SERVO_COUNT)];
  
 SensorData g_sensorData; // Zastępujemy wiele zmiennych globalnych jedną strukturą
 Configuration g_config;  // Globalny obiekt przechowujący konfigurację
+RuntimeFlags g_runtimeFlags; // Globalny obiekt flag odczytanych z DIP
  
 CommandHandler commandHandler(clock, lcd, sdCard, g_config, servos, SERVO_COUNT); // Przekazujemy tablicę do CommandHandler
  
@@ -186,13 +192,49 @@ void setup() {
   // Ustawienie timeoutu dla magistrali I2C, aby uniknąć zawieszenia programu.
   Wire.setWireTimeout(I2C_TIMEOUT_US, true);
 
+  // ZMIANA: Odczyt konfiguracji sprzętowej z przełączników DIP
+  dipReader.begin();
+  // Poniższa linia odczytuje stan z fizycznych przełączników. Zakomentuj ją, jeśli chcesz symulować wartości.
+  // uint16_t dipState = dipReader.readSwitches(); 
+  // Poniższa linia symuluje stan przełączników. Każdy bit to jeden przełącznik.
+  // ZMIANA: Bardzo czytelny sposób symulacji. Zmień '0' na '1', aby "włączyć" dany przełącznik.
+  uint16_t dipState = (0 << DIP_SLEEP_MODE_ENABLED) |             // Bit 0: Włącza tryb oszczędzania energii
+                      (0 << DIP_TRACKER_LDR_CALIBRATION) |        // Bit 1: Uruchamia kalibrację LDR przy starcie
+                      (1 << DIP_TRACKER_SERVO_CALIBRATION) |    // Bit 2: Uruchamia kalibrację serw przy starcie
+                      (1 << DIP_TRACKER_INITIAL_SEARCH) |       // Bit 3: Uruchamia wyszukiwanie słońca po starcie
+                      (1 << DIP_TRACKER_USE_JOYSTICK) |         // Bit 4: Włącza sterowanie joystickiem
+                      (1 << DIP_TRACKER_LDR_SENSORS_CONNECTED) | // Bit 5: Informuje, że fotorezystory są podłączone
+                      (1 << DIP_TRACKER_ENABLE_SERVO_MOVEMENT) | // Bit 6: Globalna blokada ruchu serwomechanizmów trackera
+                      (0 << DIP_TRACKER_ENABLE_DEBUG_PRINT);     // Bit 7: Włącza szczegółowe logi z SunTracker
+  
+  // Mapowanie bitów na flagi konfiguracyjne
+  // ZMIANA: Używamy czytelnego enuma do sprawdzania bitów
+  g_runtimeFlags.sleepModeEnabled             = (dipState & (1 << DIP_SLEEP_MODE_ENABLED));
+  g_runtimeFlags.trackerPerformLdrCalibration = (dipState & (1 << DIP_TRACKER_LDR_CALIBRATION));
+  g_runtimeFlags.trackerPerformServoCalibration = (dipState & (1 << DIP_TRACKER_SERVO_CALIBRATION));
+  g_runtimeFlags.trackerPerformInitialSearch    = (dipState & (1 << DIP_TRACKER_INITIAL_SEARCH));
+  g_runtimeFlags.trackerUseJoystick             = (dipState & (1 << DIP_TRACKER_USE_JOYSTICK));
+  g_runtimeFlags.trackerLdrSensorsConnected     = (dipState & (1 << DIP_TRACKER_LDR_SENSORS_CONNECTED));
+  g_runtimeFlags.trackerEnableServoMovement     = (dipState & (1 << DIP_TRACKER_ENABLE_SERVO_MOVEMENT));
+  g_runtimeFlags.trackerEnableDebugPrint        = (dipState & (1 << DIP_TRACKER_ENABLE_DEBUG_PRINT));
+  // Bity 8-15 są wolne do wykorzystania
+
+  // Zastosowanie odczytanych flag w konfiguracji trackera
+  const_cast<SunTrackerConfig&>(trackerConfig).performLdrCalibration = g_runtimeFlags.trackerPerformLdrCalibration;
+  const_cast<SunTrackerConfig&>(trackerConfig).performServoCalibration = g_runtimeFlags.trackerPerformServoCalibration;
+  const_cast<SunTrackerConfig&>(trackerConfig).performInitialSearch = g_runtimeFlags.trackerPerformInitialSearch;
+  const_cast<SunTrackerConfig&>(trackerConfig).useJoystick = g_runtimeFlags.trackerUseJoystick;
+  const_cast<SunTrackerConfig&>(trackerConfig).ldrSensorsConnected = g_runtimeFlags.trackerLdrSensorsConnected;
+  const_cast<SunTrackerConfig&>(trackerConfig).enableServoMovement = g_runtimeFlags.trackerEnableServoMovement;
+  const_cast<SunTrackerConfig&>(trackerConfig).enableDebugPrint = g_runtimeFlags.trackerEnableDebugPrint;
+
   // ZMIANA: Inicjalizacja LCD na początku, aby wyświetlać status uruchamiania
   lcd.init();
   lcd.clear();
   lcd.setCursor(0, 0);
   lcd.print("Boot: SmartTent...");
 
-  if (SLEEP_MODE_ENABLED) {
+  if (g_runtimeFlags.sleepModeEnabled) {
     Serial.println(F("Tryb oszczędzania energii WŁĄCZONY."));
     powerManager.begin(clock, lcd, led, sensor, dhtSensor);
   } else {
@@ -264,11 +306,14 @@ void setup() {
   // Inaczej używałby on wartości domyślnej, a nie tej z pliku config.txt.
   const_cast<SunTrackerConfig&>(trackerConfig).runningUpdateIntervalMs = g_config.trackerUpdateIntervalMs;
 
-  // Inicjalizacja serwomechanizmów
-  for (int i = 0; i < SERVO_COUNT; i++) {
-    // Inicjalizujemy każde serwo na podstawie centralnej konfiguracji
-    // Można tu dodać logikę ustawiania różnych pozycji startowych, np. z pliku konfiguracyjnego
-    servos[i].begin(servoConfigs[i].pin, servoConfigs[i].name, 0);
+  // Inicjalizacja dodatkowych serwomechanizmów
+  if (SERVO_COUNT > 0) {
+    for (int i = 0; i < SERVO_COUNT; i++) {
+      servos[i].begin(servoConfigs[i].pin, servoConfigs[i].name, 0);
+    }
+    lcd.printStatus("Extra Servos", "OK", 3);
+  } else {
+    lcd.printStatus("Extra Servos", "OFF", 3);
   }
 
   // Inicjalizacja pozostałych modułów, które nie zwracają statusu
@@ -284,7 +329,7 @@ void setup() {
 // --- Prywatna funkcja pomocnicza do obsługi logiki w trybie aktywnym ---
 void handleActiveMode() {
   // Obsługa przycisku dotykowego do resetowania timera uśpienia
-  if (SLEEP_MODE_ENABLED) {
+  if (g_runtimeFlags.sleepModeEnabled) {
     touchSensor.update();
     if (touchSensor.wasPressed()) {
       powerManager.resetActiveTimer();
@@ -393,7 +438,7 @@ void loop() {
     }
   }
 
-  if (SLEEP_MODE_ENABLED) {
+  if (g_runtimeFlags.sleepModeEnabled) {
     powerManager.update();
   }
   
@@ -404,7 +449,7 @@ void loop() {
     }
   }
 
-  if (!SLEEP_MODE_ENABLED || powerManager.isAwake()) {
+  if (!g_runtimeFlags.sleepModeEnabled || powerManager.isAwake()) {
     // Wywołujemy nową, wydzieloną funkcję
     handleActiveMode();
     

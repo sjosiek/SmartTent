@@ -24,6 +24,12 @@ void ControlPanel::update() {
   _joy2X = analogRead(_pins.joy2X);
   _joy2Y = analogRead(_pins.joy2Y);
 
+  // ZMIANA: Odczytujemy wartości z potencjometrów
+  _pot1 = analogRead(_pins.pot1);
+  _pot2 = analogRead(_pins.pot2);
+  _pot3 = analogRead(_pins.pot3);
+  _pot4 = analogRead(_pins.pot4);
+
   // ZMIANA: Aktualizujemy stan wszystkich przycisków za pomocą ich dedykowanych obiektów.
   _joy1Button.update();
   _joy2Button.update();
@@ -80,6 +86,12 @@ int ControlPanel::getJoy2YMapped() { return _applyDeadZoneAndMap(_joy2Y); }
 JoyDirection ControlPanel::getJoy2Direction() { return _getDirection(_joy2X, _joy2Y); }
 bool ControlPanel::isJoy2Pressed() { return _joy2Button.isPressed(); }
 bool ControlPanel::wasJoy2Clicked() { return _joy2Button.wasPressed(); }
+
+// ZMIANA: Implementacja getterów dla potencjometrów
+int ControlPanel::getPot1Raw() { return _pot1; }
+int ControlPanel::getPot2Raw() { return _pot2; }
+int ControlPanel::getPot3Raw() { return _pot3; }
+int ControlPanel::getPot4Raw() { return _pot4; }
 
 
 // Reszta metod (encoder, buzzer) bez zmian

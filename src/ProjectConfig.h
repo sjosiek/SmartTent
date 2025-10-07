@@ -14,8 +14,34 @@ struct Configuration {
   uint8_t ledBrightness = 7;            // Domyślnie 7
 };
 
+// NOWA STRUKTURA: Przechowuje flagi konfiguracyjne odczytywane przy starcie
+struct RuntimeFlags {
+  bool sleepModeEnabled;
+  bool trackerPerformLdrCalibration;
+  bool trackerPerformServoCalibration;
+  bool trackerPerformInitialSearch;
+  bool trackerUseJoystick;
+  bool trackerLdrSensorsConnected;
+  bool trackerEnableServoMovement;
+  bool trackerEnableDebugPrint;
+  // Można tu dodać kolejne 8 flag dla drugiego przełącznika
+};
+
+// NOWOŚĆ: Enum do mapowania bitów na funkcje dla większej czytelności
+enum DipSwitchBits {
+  DIP_SLEEP_MODE_ENABLED = 0,
+  DIP_TRACKER_LDR_CALIBRATION = 1,
+  DIP_TRACKER_SERVO_CALIBRATION = 2,
+  DIP_TRACKER_INITIAL_SEARCH = 3,
+  DIP_TRACKER_USE_JOYSTICK = 4,
+  DIP_TRACKER_LDR_SENSORS_CONNECTED = 5,
+  DIP_TRACKER_ENABLE_SERVO_MOVEMENT = 6,
+  DIP_TRACKER_ENABLE_DEBUG_PRINT = 7
+  // Bity 8-15 wolne
+};
+
 // --- Ustawienia globalne ---
-constexpr bool SLEEP_MODE_ENABLED = false;
+// USUNIĘTO: constexpr bool SLEEP_MODE_ENABLED = false; - teraz będzie w RuntimeFlags
 
 // --- Magistrala I2C ---
 constexpr uint8_t LCD_ADDRESS = 0x27;
@@ -52,13 +78,12 @@ constexpr uint8_t LDR_DOWN_LEFT_PIN = A0;
 constexpr uint8_t LDR_DOWN_RIGHT_PIN = A3;
 
 // --- Sun Tracker - Konfiguracja startowa ---
-constexpr bool TRACKER_PERFORM_LDR_CALIBRATION = false;
-constexpr bool TRACKER_PERFORM_SERVO_CALIBRATION = true;
-constexpr bool TRACKER_PERFORM_INITIAL_SEARCH = true;
-constexpr bool TRACKER_USE_JOYSTICK = true;
-constexpr bool TRACKER_LDR_SENSORS_CONNECTED = true;
-constexpr bool TRACKER_ENABLE_SERVO_MOVEMENT = true;
-constexpr bool TRACKER_ENABLE_DEBUG_PRINT = false; // Ustaw na 'true', aby włączyć szczegółowe logi z SunTracker
+// USUNIĘTO: Wszystkie flagi constexpr dla trackera, zostaną zastąpione przez RuntimeFlags
+
+// --- Piny dla czytnika DIP Switch (74HC165) ---
+constexpr uint8_t DIP_LATCH_PIN = 30;
+constexpr uint8_t DIP_CLOCK_PIN = 31;
+constexpr uint8_t DIP_DATA_PIN  = 32;
 
 // --- Control Panel ---
 constexpr uint8_t JOY1_X_PIN = A8;
@@ -71,5 +96,11 @@ constexpr uint8_t ENC_DT_PIN = 26;
 constexpr uint8_t ENC_CLK_PIN = 27;
 constexpr uint8_t ENC_SW_PIN = 28;
 constexpr uint8_t BUZZER_PIN = 29;
+
+// --- Dodatkowe potencjometry ---
+constexpr uint8_t POT1_PIN = A12;
+constexpr uint8_t POT2_PIN = A13;
+constexpr uint8_t POT3_PIN = A14;
+constexpr uint8_t POT4_PIN = A15;
 
 #endif // HARDWARE_PINS_H
