@@ -3,13 +3,18 @@
 #include "CommandHandler.h"
 
 
-CommandHandler::CommandHandler(Clock& clock, SDCard& sdCard, Configuration& config, SmoothServo* servos, int servoCount) 
-  : _clock(&clock), _sdCard(&sdCard), _config(&config), _servos(servos), _servoCount(servoCount) {}
+CommandHandler::CommandHandler(Clock& clock, LcdDisplay& lcd, SDCard& sdCard, Configuration& config, SmoothServo* servos, int servoCount) 
+  : _clock(&clock), _lcd(&lcd), _sdCard(&sdCard), _config(&config), _servos(servos), _servoCount(servoCount) {}
 
 void CommandHandler::update() {
   if (Serial.available() > 0) {
     String command = Serial.readStringUntil('\n');
     command.trim();
+
+    // ZMIANA: Wyświetl komunikat na LCD
+    char buffer[21];
+    snprintf(buffer, sizeof(buffer), "CMD: %s", command.c_str());
+    _lcd->showTemporaryMessage("Odebrano komende:", buffer, 5000);
 
     Serial.print(F("Odebrano z portu szeregowego: \""));
     Serial.print(command);
