@@ -238,7 +238,8 @@ void handleActiveMode() {
     DateTime now = clock.getTime();
     g_sensorData.dateStr = Clock::formatDate(now);
     g_sensorData.timeForLcd = Clock::formatTime(now, true);
-    g_sensorData.timeForLed = Clock::formatTime(now, false);
+    g_sensorData.hour = now.hour();
+    g_sensorData.minute = now.minute();
 
     g_sensorData.temp_bme = sensor.getTemperature();
     g_sensorData.hum_bme = sensor.getHumidity();
@@ -253,9 +254,7 @@ void handleActiveMode() {
 
   // Aktualizacja wyświetlacza LED
   if (ledUpdateTimer.isReady()) {
-    if (g_sensorData.timeForLed.length() > 0) {
-      led.update(g_sensorData.timeForLed);
-    }
+    led.update(g_sensorData.hour, g_sensorData.minute);
   }
 }
 

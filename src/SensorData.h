@@ -6,7 +6,8 @@
 struct SensorData {
   String dateStr;
   String timeForLcd;
-  String timeForLed;
+  uint8_t hour;
+  uint8_t minute;
   float temp_bme;
   float hum_bme;
   float pressure_bme;
