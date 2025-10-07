@@ -43,52 +43,99 @@ void LcdDisplay::printWelcomeMessage() {
 #pragma GCC diagnostic ignored "-Wformat"
 void LcdDisplay::update(const SensorData& data) {
   if (!_isInitialized) {
-    // Jeśli wyświetlacz nie jest zainicjalizowany, spróbuj go zainicjować.
     _isInitialized = checkAndInit();
     if (!_isInitialized) return;
   }
 
-  // ZMIANA: Sprawdzamy, czy aktywna jest wiadomość tymczasowa.
   if (_isTempMessageActive && millis() < _tempMessageEndTime) {
-    return; // Jeśli tak, nie nadpisujemy jej danymi z czujników.
+    return; // Nie nadpisuj wiadomości tymczasowej
   } else if (_isTempMessageActive) {
-    // Jeśli wyświetlacz nie jest zainicjalizowany (np. po utracie zasilania),
-    // spróbuj go zainicjalizować ponownie.
-    _isInitialized = checkAndInit();
-    if (!_isInitialized) {
-      // Jeśli inicjalizacja się nie powiodła, nie próbuj pisać, aby uniknąć śmieci.
-      return;
-    }
-    _isTempMessageActive = false; // Czas minął, dezaktywujemy flagę.
+    _isTempMessageActive = false; // Czas minął, dezaktywuj flagę
+    lcd.clear(); // Wyczyść ekran po wiadomości tymczasowej
   }
-  char buffer[21]; // Bufor na formatowane linie
 
-  // Linia 0: Data i czas
+  // ZMIANA: Dyspozytor, który wywołuje odpowiednią funkcję rysującą
+  switch (_currentScreen) {
+    case LcdScreen::MAIN:
+      _drawMainScreen(data);
+      break;
+    case LcdScreen::TRACKER:
+      _drawTrackerScreen(data);
+      break;
+    case LcdScreen::GPS:
+      _drawGpsScreen(data);
+      break;
+    default:
+      _drawMainScreen(data);
+      break;
+  }
+}
+#pragma GCC diagnostic pop
+
+void LcdDisplay::_drawMainScreen(const SensorData& data) {
+  char buffer[21];
   lcd.setCursor(0, 0);
-  // Format: "YYYY-MM-DD  HH:MM:SS" (10 + 2 + 8 = 20 znaków)
   snprintf(buffer, sizeof(buffer), "%s  %s", data.dateStr.c_str(), data.timeForLcd.c_str());
   lcd.print(buffer);
 
-  // Linia 1: Dane z namiotu (DHT11)
   lcd.setCursor(0, 1);
   snprintf(buffer, sizeof(buffer), "N: %4.1f%cC  H: %3.0f%%  ", (double)data.temp_dht, DEGREE_SYMBOL, (double)data.hum_dht);
   lcd.print(buffer); 
 
-  // Linia 2: Dane z zewnątrz (BME280)
   lcd.setCursor(0, 2);
   snprintf(buffer, sizeof(buffer), "Z: %4.1f%cC H: %3.0f%%  ", (double)data.temp_bme, DEGREE_SYMBOL, (double)data.hum_bme);
   lcd.print(buffer);
 
-  // Linia 3: Aktualne pozycje serwomechanizmów
   lcd.setCursor(0, 3);
-  // Zmieniono formatowanie ciśnienia, aby pokazywało 2 miejsca po przecinku.
-  // Format został zacieśniony, aby zmieścić się w 20 kolumnach wyświetlacza.
-  // Użyto "%7.2f", aby zapewnić stałą szerokość i wyrównanie.
   snprintf(buffer, sizeof(buffer), "W:%4.1f%cC P:%7.2fhPa", (double)data.temp_rtc, DEGREE_SYMBOL, (double)data.pressure_bme);
   lcd.print(buffer);
-  
 }
-#pragma GCC diagnostic pop
+
+void LcdDisplay::_drawTrackerScreen(const SensorData& data) {
+  char buffer[21];
+  lcd.setCursor(0, 0);
+  lcd.print(F("--- Status Trackera ---"));
+
+  lcd.setCursor(0, 1);
+  snprintf(buffer, sizeof(buffer), "H: %-3d         V: %-3d", data.servo_h_pos, data.servo_v_pos);
+  lcd.print(buffer);
+
+  lcd.setCursor(0, 2);
+  snprintf(buffer, sizeof(buffer), "TL:%-4d      TR:%-4d", data.ldr_tl, data.ldr_tr);
+  lcd.print(buffer);
+
+  lcd.setCursor(0, 3);
+  snprintf(buffer, sizeof(buffer), "DL:%-4d      DR:%-4d", data.ldr_dl, data.ldr_dr);
+  lcd.print(buffer);
+}
+
+void LcdDisplay::_drawGpsScreen(const SensorData& data) {
+  char buffer[21];
+  char float_buf[12];
+
+  lcd.setCursor(0, 0);
+  snprintf(buffer, sizeof(buffer), "--- Status GPS [%c] ---", data.gps_is_valid ? 'V' : 'I');
+  lcd.print(buffer);
+
+  if (data.gps_is_valid) {
+    lcd.setCursor(0, 1);
+    dtostrf(data.gps_lat, 4, 6, float_buf);
+    snprintf(buffer, sizeof(buffer), "Lat: %s", float_buf);
+    lcd.print(buffer);
+
+    lcd.setCursor(0, 2);
+    dtostrf(data.gps_lon, 4, 6, float_buf);
+    snprintf(buffer, sizeof(buffer), "Lon: %s", float_buf);
+    lcd.print(buffer);
+
+    lcd.setCursor(0, 3);
+    snprintf(buffer, sizeof(buffer), "Alt:%.1fm Sats:%d", (double)data.gps_alt, data.gps_sats);
+    lcd.print(buffer);
+  } else {
+    lcd.setCursor(0, 2);
+    lcd.print(F("   Oczekiwanie na FIX"));
+  }
+}
 
 void LcdDisplay::printStatus(const char* module, const char* status, int row) {
   if (!_isInitialized) return;
@@ -112,6 +159,26 @@ void LcdDisplay::showTemporaryMessage(const char* line1, const char* line2, uint
   
   _tempMessageEndTime = millis() + duration;
   _isTempMessageActive = true;
+}
+
+void LcdDisplay::nextScreen() {
+  int current = static_cast<int>(_currentScreen);
+  current++; 
+  if (current >= static_cast<int>(LcdScreen::SCREEN_COUNT)) {
+    current = 0; // Zapętl
+  }
+  _currentScreen = static_cast<LcdScreen>(current);
+  lcd.clear(); // Wyczyść ekran przy zmianie
+}
+
+void LcdDisplay::previousScreen() {
+  int current = static_cast<int>(_currentScreen);
+  current--;
+  if (current < 0) {
+    current = static_cast<int>(LcdScreen::SCREEN_COUNT) - 1; // Zapętl
+  }
+  _currentScreen = static_cast<LcdScreen>(current);
+  lcd.clear(); // Wyczyść ekran przy zmianie
 }
 
 void LcdDisplay::setCursor(uint8_t col, uint8_t row) {

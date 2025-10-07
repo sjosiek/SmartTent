@@ -14,8 +14,19 @@ struct SensorData {
   float temp_rtc;
   float temp_dht;
   float hum_dht;
-  int servo1_pos;
-  int servo2_pos;
+  // ZMIANA: Pola dla ekranu trackera
+  int servo_h_pos;
+  int servo_v_pos;
+  int ldr_tl;
+  int ldr_tr;
+  int ldr_dl;
+  int ldr_dr;
+  // ZMIANA: Pola dla ekranu GPS
+  bool gps_is_valid;
+  float gps_lat;
+  float gps_lon;
+  float gps_alt;
+  uint8_t gps_sats;
 };
 
 #endif

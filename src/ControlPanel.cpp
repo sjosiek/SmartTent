@@ -24,8 +24,6 @@ void ControlPanel::update() {
   _joy2X = analogRead(_pins.joy2X);
   _joy2Y = analogRead(_pins.joy2Y);
 
-  _encoderValue = _encoder.read();
-
   // ZMIANA: Aktualizujemy stan wszystkich przycisków za pomocą ich dedykowanych obiektów.
   _joy1Button.update();
   _joy2Button.update();
@@ -85,8 +83,22 @@ bool ControlPanel::wasJoy2Clicked() { return _joy2Button.wasPressed(); }
 
 
 // Reszta metod (encoder, buzzer) bez zmian
-long ControlPanel::getEncoderValue() { return _encoderValue / 4; }
+long ControlPanel::getEncoderValue() { return _encoder.read() / 4; }
 void ControlPanel::resetEncoder(long newValue) { _encoder.write(newValue * 4); }
+
+int ControlPanel::getEncoderChange() {
+  long currentValue = _encoder.read();
+  if (currentValue >= _lastEncoderValue + 4) {
+    _lastEncoderValue = currentValue;
+    return 1; // Obrót w prawo
+  }
+  if (currentValue <= _lastEncoderValue - 4) {
+    _lastEncoderValue = currentValue;
+    return -1; // Obrót w lewo
+  }
+  return 0; // Brak zmiany
+}
+
 bool ControlPanel::isEncoderPressed() { return _encButton.isPressed(); }
 bool ControlPanel::wasEncoderClicked() { return _encButton.wasPressed(); }
 void ControlPanel::beep(unsigned int frequency, unsigned long duration) { tone(_pins.buzzer, frequency, duration); }

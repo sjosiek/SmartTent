@@ -1,6 +1,48 @@
 // Plik główny: main.cpp
 // Wersja z poprawioną logiką w funkcji setup()
 
+/*
+ * ==========================================================================
+ * --- MAPA POŁĄCZEŃ (Arduino Mega 2560) ---
+ * ==========================================================================
+ *
+ * --- Magistrala I2C (SDA: 20, SCL: 21) ---
+ *   - Wyświetlacz LCD 20x4 (SDA -> 20, SCL -> 21)
+ *   - Czujnik BME280 (SDA -> 20, SCL -> 21)
+ *   - Zegar RTC DS3231 (SDA -> 20, SCL -> 21)
+ *
+ * --- Magistrala SPI (MOSI: 51, MISO: 50, SCK: 52) ---
+ *   - Czytnik kart SD (CS -> 53)
+ *
+ * --- Magistrala Serial1 (RX1: 19, TX1: 18) ---
+ *   - Moduł GPS (GPS TX -> 19, GPS RX -> 18)
+ *
+ * --- Zasilanie i Przerwania ---
+ *   - Moduł zasilania (MOSFET Gate) -> 4
+ *   - Zegar RTC DS3231 (SQW / INT) -> 2 (Przerwanie 0)
+ *   - Czujnik dotykowy TTP223 (OUT) -> 3 (Przerwanie 1)
+ *
+ * --- Czujniki ---
+ *   - Czujnik DHT11/22 (DATA) -> 6
+ *
+ * --- Wyświetlacze ---
+ *   - Wyświetlacz LED TM1637 (CLK -> 22, DIO -> 23)
+ *
+ * --- Sun Tracker ---
+ *   - Serwo poziome (Signal) -> 9
+ *   - Serwo pionowe (Signal) -> 10
+ *   - Fotorezystor (Góra-Lewo) -> A1
+ *   - Fotorezystor (Góra-Prawo) -> A2
+ *   - Fotorezystor (Dół-Lewo) -> A0
+ *   - Fotorezystor (Dół-Prawo) -> A3
+ *
+ * --- Panel Sterowania (Control Panel) ---
+ *   - Joystick 1 (X -> A8, Y -> A9, SW -> 24)
+ *   - Joystick 2 (X -> A10, Y -> A11, SW -> 25)
+ *   - Enkoder obrotowy (DT -> 26, CLK -> 27, SW -> 28)
+ *   - Buzzer (+) -> 29
+ */
+
 #include <SPI.h>
 #include <SD.h>
 #include <Arduino.h>
@@ -105,6 +147,9 @@ WeatherSensor sensor;          //BME 280
 LcdDisplay lcd(LCD_ADDRESS, LCD_COLS, LCD_ROWS);  // LCD
 LedDisplay led(LED_CLK_PIN, LED_DIO_PIN);         // LED
 
+// ZMIANA: Inicjalizacja modułu GPS. Zakładamy, że jest podłączony do portu Serial1.
+GPSModule gps(Serial1);
+
 // Czujnik dotykowy jest aktywny stanem wysokim (nie ma zworek do zmiany logiki).
 DebouncedButton touchSensor(TOUCH_SENSOR_PIN, ActiveState::ACTIVE_HIGH);
 
@@ -134,6 +179,9 @@ void setup() {
   pinMode(LED_BUILTIN, OUTPUT); // Inicjalizacja wbudowanej diody LED
   Serial.begin(9600);
   Serial.println(F("\nBooting SmartTent System..."));
+
+  // ZMIANA: Inicjalizacja portu szeregowego dla GPS
+  Serial1.begin(9600);
 
   // Ustawienie timeoutu dla magistrali I2C, aby uniknąć zawieszenia programu.
   Wire.setWireTimeout(I2C_TIMEOUT_US, true);
@@ -189,6 +237,9 @@ void setup() {
 
   // ZMIANA: Dodajemy informację o gotowości CommandHandler
   lcd.printStatus("Cmd Handler", "OK", 3);
+
+  // ZMIANA: Dodajemy informację o statusie GPS
+  lcd.printStatus("GPS", "INIT", 0);
 
   // Inicjalizacja karty SD (zawsze, niezależnie od trybu uśpienia)
   if (sdCard.init()) {
@@ -258,6 +309,19 @@ void handleActiveMode() {
     g_sensorData.temp_dht = dhtSensor.getTemperature();
     g_sensorData.hum_dht = dhtSensor.getHumidity();
 
+    // ZMIANA: Pobieramy dane dla ekranu trackera
+    g_sensorData.servo_h_pos = sunTracker.getHorizontalServoPosition();
+    g_sensorData.servo_v_pos = sunTracker.getVerticalServoPosition();
+    sunTracker.getLdrValues(g_sensorData.ldr_tl, g_sensorData.ldr_tr, g_sensorData.ldr_dl, g_sensorData.ldr_dr);
+
+    // ZMIANA: Pobieramy dane z modułu GPS
+    g_sensorData.gps_is_valid = gps.isDataValid();
+    g_sensorData.gps_lat = gps.getLatitude();
+    g_sensorData.gps_lon = gps.getLongitude();
+    g_sensorData.gps_alt = gps.getAltitude();
+    g_sensorData.gps_sats = gps.getSatellites();
+
+
     lcd.update(g_sensorData);
     sdCard.logSensorData(g_sensorData, "datalog.txt");
   }
@@ -268,10 +332,45 @@ void handleActiveMode() {
   }
 }
 
+// --- Prywatna funkcja pomocnicza do raportowania stanu przez port szeregowy ---
+void printStatusReport() {
+  Serial.println(F("\nHEARTBEAT (Aktywny)\n"));
+
+  int ldr_tl, ldr_tr, ldr_dl, ldr_dr;
+  sunTracker.getLdrValues(ldr_tl, ldr_tr, ldr_dl, ldr_dr);
+
+  char buffer[128];
+  snprintf(buffer, sizeof(buffer),
+           "Czas: %s | Temp(Z/N): %.1f/%.1fC | Wilg(Z/N): %.0f/%.0f%% | Cisn: %.1fhPa",
+           g_sensorData.timeForLcd.c_str(), (double)g_sensorData.temp_bme, (double)g_sensorData.temp_dht,
+           (double)g_sensorData.hum_bme, (double)g_sensorData.hum_dht, (double)g_sensorData.pressure_bme);
+  Serial.println(buffer);
+  snprintf(buffer, sizeof(buffer),
+           "Serva(H/V): %d/%d | LDR(TL,TR,DL,DR): %d,%d,%d,%d",
+           sunTracker.getHorizontalServoPosition(), sunTracker.getVerticalServoPosition(),
+           ldr_tl, ldr_tr, ldr_dl, ldr_dr);
+  Serial.println(buffer);
+  
+  Serial.println(); // Pusta linia dla czytelności
+}
+
+
 void loop() {
   commandHandler.update(); // Sprawdzaj, czy przyszła komenda synchronizacji
 
   controlPanel.update(); // Odczytuj stan joysticków, enkodera i przycisków
+
+  // ZMIANA: Obsługa przełączania ekranów za pomocą enkodera
+  int encoderChange = controlPanel.getEncoderChange();
+  if (encoderChange > 0) {
+    lcd.nextScreen();
+  } else if (encoderChange < 0) {
+    lcd.previousScreen();
+  }
+
+  // ZMIANA: Aktualizujemy stan modułu GPS w każdej pętli
+  gps.update();
+
   sunTracker.update();
 
   // Mruganie wbudowaną diodą LED jako "heartbeat" systemu
@@ -303,24 +402,7 @@ void loop() {
     handleActiveMode();
     
     if (heartbeatTimer.isReady()) { 
-      Serial.println(F("\nHEARTBEAT (Aktywny)\n"));
-
-      int ldr_tl, ldr_tr, ldr_dl, ldr_dr;
-      sunTracker.getLdrValues(ldr_tl, ldr_tr, ldr_dl, ldr_dr);
-
-      char buffer[128];
-      snprintf(buffer, sizeof(buffer),
-               "Czas: %s | Temp(Z/N): %.1f/%.1fC | Wilg(Z/N): %.0f/%.0f%% | Cisn: %.1fhPa",
-               g_sensorData.timeForLcd.c_str(), (double)g_sensorData.temp_bme, (double)g_sensorData.temp_dht,
-               (double)g_sensorData.hum_bme, (double)g_sensorData.hum_dht, (double)g_sensorData.pressure_bme);
-      Serial.println(buffer);
-      snprintf(buffer, sizeof(buffer),
-               "Serva(H/V): %d/%d | LDR(TL,TR,DL,DR): %d,%d,%d,%d",
-               sunTracker.getHorizontalServoPosition(), sunTracker.getVerticalServoPosition(),
-               ldr_tl, ldr_tr, ldr_dl, ldr_dr);
-      Serial.println(buffer);
-      
-      Serial.println(); // Pusta linia dla czytelności
+      printStatusReport();
     }
   }
 }

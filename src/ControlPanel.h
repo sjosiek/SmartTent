@@ -46,6 +46,7 @@ public:
   bool isJoy2Pressed();
   bool wasJoy2Clicked();
   
+  int getEncoderChange(); // Zwraca 1 (prawo), -1 (lewo) lub 0
   long getEncoderValue();
   void resetEncoder(long newValue = 0);
   bool isEncoderPressed();
@@ -65,7 +66,7 @@ private:
   
   ModulePins _pins;
   Encoder _encoder;
-  long _encoderValue;
+  long _lastEncoderValue;
   int _joy1X, _joy1Y, _joy2X, _joy2Y;
 
   // ZMIANA: Używamy dedykowanej klasy do obsługi przycisków
