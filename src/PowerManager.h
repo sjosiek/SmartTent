@@ -40,13 +40,12 @@ public:
   void resetActiveTimer();
   void setActiveModeDuration(uint32_t minutes);
   
-  // ZMIANA: Te metody stają się publiczne, aby można było ich użyć w setup()
+  // Metoda publiczna, aby można było jej użyć w setup() w trybie bez uśpienia
   void powerUpPeripherals();
-  void powerDownPeripherals();
 
 private:
-  // ZMIANA: Usunięto stąd powerUpPeripherals() i powerDownPeripherals()
   void goToSleep();
+  void powerDownPeripherals(); // ZMIANA: Ta metoda jest używana tylko wewnętrznie
   void handleWakeUp();
   void prepareToSleep();
   void deenergizeDataLines();

@@ -28,7 +28,8 @@ void PowerManager::begin(Clock& clock, LcdDisplay& lcd, LedDisplay& led, Weather
   // Czujnik dotykowy jest aktywny stanem wysokim, nie wymaga rezystora podciągającego.
   pinMode(_manualWakeupPin, INPUT);
   
-  powerDownPeripherals();
+  // ZMIANA KRYTYCZNA: Usunięto natychmiastowe wyłączanie zasilania.
+  // Funkcja begin() powinna tylko konfigurować, a nie podejmować akcji.
 }
 
 bool PowerManager::isAwake() {
@@ -45,19 +46,9 @@ void PowerManager::resetActiveTimer() {
 void PowerManager::update() {
   switch (_currentState) {
     case SystemState::POWER_UP:
-      Serial.println(F("Stan: POWER_UP"));
-      powerUpPeripherals();
-      _lcd->init();
-      _led->init(10);
-      if (!_sensor->init()) {
-        Serial.println(F("Błąd inicjalizacji czujnika BME280 w PowerManager!"));
-      } else {
-        Serial.println(F("Czujnik BME280 OK (PowerManager)."));
-      }
-      _dht->init();
-      Serial.println(F("Czujnik DHT11 zainicjalizowany (PowerManager)."));
-      _lcd->printWelcomeMessage();
-      delay(2000);
+      // ZMIANA: Usunięto logikę ponownej inicjalizacji.
+      // Teraz tylko zmieniamy stan, aby uniknąć konfliktów.
+      Serial.println(F("PowerManager: Stan POWER_UP -> ACTIVE"));
       _activeModeTimer.reset();
       _currentState = SystemState::ACTIVE;
       break;
