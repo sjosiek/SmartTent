@@ -65,6 +65,7 @@
 #include "HardwareConfigReader.h" // Czytnik DIP switch
 #include "SoundPlayer.h"     // ZMIANA: Dołączamy nową klasę do obsługi dźwięków
 #include "DeviceStatus.h"    // ZMIANA: Dołączamy nową definicję statusu
+#include <avr/wdt.h>         // ZMIANA: Dołączamy bibliotekę Watchdog Timera
 
 // --- Konfiguracja działania trackera---
 // Zmieniono na standardową inicjalizację C++, aby zapewnić kompatybilność z kompilatorem avr-gcc.
@@ -205,6 +206,17 @@ ModuleStatus g_moduleStatuses[static_cast<int>(ModuleID::MODULE_COUNT)] = {
 void setup() {
   pinMode(LED_BUILTIN, OUTPUT); // Inicjalizacja wbudowanej diody LED
   Serial.begin(9600);
+
+  // ZMIANA: Obsługa Watchdog Timera na samym początku
+  // Sprawdzamy, czy poprzedni reset był spowodowany przez Watchdoga.
+  if (MCUSR & (1 << WDRF)) {
+    Serial.println(F("\n!!! SYSTEM ZRESETOWANY PRZEZ WATCHDOG TIMER !!!"));
+  }
+  // Czyścimy flagi resetu, aby uniknąć fałszywych odczytów w przyszłości.
+  MCUSR = 0;
+  // Natychmiast wyłączamy Watchdoga, aby dać czas na wykonanie całej funkcji setup().
+  wdt_disable();
+
   Serial.println(F("\nBooting SmartTent System..."));
 
   // ZMIANA: Inicjalizacja portu szeregowego dla GPS
@@ -374,6 +386,10 @@ void setup() {
   soundPlayer.playStartupSound();
   delay(3000);
   lcd.showMainScreen();
+
+  // ZMIANA: Włączamy Watchdog Timer na końcu setup z timeoutem 2 sekund.
+  Serial.println(F("Inicjalizacja zakończona. Włączam Watchdog Timer (2s)..."));
+  wdt_enable(WDTO_2S);
 }
 
 // --- Prywatna funkcja pomocnicza do obsługi logiki w trybie aktywnym ---
@@ -524,4 +540,8 @@ void loop() {
       // controlPanel.printDebugInfo();
     }
   }
+
+  // ZMIANA: "Głaskanie" Watchdoga. Resetujemy jego licznik w każdej pętli,
+  // sygnalizując, że program działa poprawnie.
+  wdt_reset();
 }
