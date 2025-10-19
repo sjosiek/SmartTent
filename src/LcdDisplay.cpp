@@ -3,9 +3,10 @@
 #include "LcdDisplay.h"
 
 const char DEGREE_SYMBOL = 223; // Definicja symbolu stopnia
-
-LcdDisplay::LcdDisplay(uint8_t address, uint8_t cols, uint8_t rows) 
-  : lcd(address, cols, rows), _address(address), _isInitialized(false) {}
+// ZMIANA: Inicjalizujemy timer w liście inicjalizacyjnej konstruktora
+LcdDisplay::LcdDisplay(uint8_t address, uint8_t cols, uint8_t rows)
+    : lcd(address, cols, rows), _address(address), _cols(cols), _rows(rows),
+      _isInitialized(false), _statusPageTimer(5000) {} // 5 sekund na stronę
 
 void LcdDisplay::init() {
   _isInitialized = checkAndInit();
@@ -60,6 +61,18 @@ void LcdDisplay::update(const SensorData& data) {
     lcd.clear(); // Wyczyść ekran po wiadomości tymczasowej
   }
 
+  // ZMIANA: Logika automatycznej paginacji dla ekranu statusu
+  if (_currentScreen == LcdScreen::STATUS) {
+    if (_statusPageTimer.isReady()) {
+      const int itemsPerPage = _rows - 1;
+      const int numPages = (_moduleStatusCount + itemsPerPage - 1) / itemsPerPage;
+      if (numPages > 1) {
+        _statusScreenPage = (_statusScreenPage + 1) % numPages;
+        lcd.clear(); // Wyczyść, aby przerysować nową stronę
+      }
+    }
+  }
+
   // ZMIANA: Dyspozytor, który wywołuje odpowiednią funkcję rysującą
   switch (_currentScreen) {
     case LcdScreen::MAIN:
@@ -70,6 +83,9 @@ void LcdDisplay::update(const SensorData& data) {
       break;
     case LcdScreen::GPS:
       _drawGpsScreen(data);
+      break;
+    case LcdScreen::STATUS:
+      _drawStatusScreen();
       break;
     default:
       _drawMainScreen(data);
@@ -100,7 +116,7 @@ void LcdDisplay::_drawMainScreen(const SensorData& data) {
 void LcdDisplay::_drawTrackerScreen(const SensorData& data) {
   char buffer[21];
   lcd.setCursor(0, 0);
-  lcd.print(F("--- Status Trackera ---"));
+  lcd.print(F("Status Trackera"));
 
   lcd.setCursor(0, 1);
   snprintf(buffer, sizeof(buffer), "H: %-3d         V: %-3d", data.servo_h_pos, data.servo_v_pos);
@@ -154,14 +170,51 @@ void LcdDisplay::_drawGpsScreen(const SensorData& data) {
   lcd.print(buffer);
 }
 
+void LcdDisplay::_drawStatusScreen() {
+  const int itemsPerPage = _rows - 1; // -1 na tytuł
+  lcd.setCursor(0, 0);
+  lcd.print(F("Status Modulow"));
+
+  if (!_moduleStatuses || _moduleStatusCount == 0) {
+    printLine("Brak danych statusu", 1);
+    return;
+  }
+
+  // Logika paginacji
+  int startIdx = _statusScreenPage * itemsPerPage;
+  for (int i = 0; i < itemsPerPage; ++i) {
+    int currentIdx = startIdx + i;
+    int row = i + 1;
+    if (currentIdx < _moduleStatusCount) {
+      char buffer[_cols + 1];
+      snprintf(buffer, sizeof(buffer), "%-13s: %s", _moduleStatuses[currentIdx].name, _moduleStatuses[currentIdx].statusText);
+      printLine(buffer, row);
+    } else {
+      printLine("", row); // Wyczyść resztę linii
+    }
+  }
+}
+
 void LcdDisplay::printStatus(const char* module, const char* status, int row) {
   if (!_isInitialized) return;
   lcd.setCursor(0, row);
-  char buffer[21]; // 20 kolumn + znak null
+  char buffer[_cols + 1];
 
   // Formatowanie z wyrównaniem do lewej, aby statusy były w jednej linii
   // np. "Zegar RTC        [OK]"
   snprintf(buffer, sizeof(buffer), "%-16s [%s]", module, status);
+  lcd.print(buffer);
+}
+
+void LcdDisplay::printLine(const char* text, int row) {
+  if (!_isInitialized) return;
+  lcd.setCursor(0, row);
+  
+  char buffer[_cols + 1];
+  
+  // Formatowanie z dopełnieniem spacjami, aby wyczyścić całą linię
+  snprintf(buffer, sizeof(buffer), "%-*.*s", _cols, _cols, text);
+  
   lcd.print(buffer);
 }
 
@@ -185,6 +238,20 @@ void LcdDisplay::nextScreen() {
     current = 0; // Zapętl
   }
   _currentScreen = static_cast<LcdScreen>(current);
+
+  // ZMIANA: Resetujemy stronę statusu i timer przy przejściu na ten ekran,
+  // aby zawsze zaczynać od pierwszej strony.
+  if (_currentScreen == LcdScreen::STATUS) {
+    _statusScreenPage = 0;
+    _statusPageTimer.reset(); // Zresetuj timer, aby odliczał od nowa
+  }
+  lcd.clear(); // Wyczyść ekran przy zmianie
+}
+
+void LcdDisplay::showMainScreen() {
+  if (_currentScreen == LcdScreen::MAIN) return; // Już jesteśmy na ekranie głównym
+  _currentScreen = LcdScreen::MAIN;
+  _statusScreenPage = 0; // Zresetuj paginację dla ekranu statusu na wszelki wypadek
   lcd.clear(); // Wyczyść ekran przy zmianie
 }
 
@@ -195,7 +262,19 @@ void LcdDisplay::previousScreen() {
     current = static_cast<int>(LcdScreen::SCREEN_COUNT) - 1; // Zapętl
   }
   _currentScreen = static_cast<LcdScreen>(current);
+
+  // ZMIANA: Resetujemy stronę statusu i timer przy przejściu na ten ekran,
+  // aby zawsze zaczynać od pierwszej strony.
+  if (_currentScreen == LcdScreen::STATUS) {
+    _statusScreenPage = 0;
+    _statusPageTimer.reset(); // Zresetuj timer, aby odliczał od nowa
+  }
   lcd.clear(); // Wyczyść ekran przy zmianie
+}
+
+// ZMIANA: Implementacja gettera
+LcdDisplay::LcdScreen LcdDisplay::getCurrentScreen() const {
+  return _currentScreen;
 }
 
 void LcdDisplay::setCursor(uint8_t col, uint8_t row) {
@@ -204,6 +283,11 @@ void LcdDisplay::setCursor(uint8_t col, uint8_t row) {
 }
 
 void LcdDisplay::print(const char* text) {
+  if (!_isInitialized) return;
+  lcd.print(text);
+}
+
+void LcdDisplay::print(const __FlashStringHelper* text) {
   if (!_isInitialized) return;
   lcd.print(text);
 }
@@ -218,4 +302,9 @@ void LcdDisplay::noBacklight() {
 
 void LcdDisplay::backlight() {
   lcd.backlight();
+}
+
+void LcdDisplay::setModuleStatuses(const ModuleStatus* statuses, int count) {
+  _moduleStatuses = statuses;
+  _moduleStatusCount = count;
 }

@@ -64,6 +64,7 @@
 #include "GPSModule.h"    // GPS
 #include "HardwareConfigReader.h" // Czytnik DIP switch
 #include "SoundPlayer.h"     // ZMIANA: Dołączamy nową klasę do obsługi dźwięków
+#include "DeviceStatus.h"    // ZMIANA: Dołączamy nową definicję statusu
 
 // --- Konfiguracja działania trackera---
 // Zmieniono na standardową inicjalizację C++, aby zapewnić kompatybilność z kompilatorem avr-gcc.
@@ -182,6 +183,25 @@ Timer heartbeatTimer(1000);  // ZMIANA: Heartbeat co 1 sekundę
 Timer builtinLedTimer(1000); // Timer do mrugania wbudowaną diodą LED
 Timer errorLedTimer(200);    // Szybszy timer do sygnalizacji błędu
 
+// --- ZMIANA: Globalna tablica statusów modułów ---
+enum class ModuleID {
+    RTC, BME280, DHT11, SD_CARD, GPS,
+    CMD_HANDLER, EXTRA_SERVOS, CONTROL_PANEL,
+    MODULE_COUNT
+};
+
+ModuleStatus g_moduleStatuses[static_cast<int>(ModuleID::MODULE_COUNT)] = {
+    { "Zegar RTC",    ModuleHealth::UNKNOWN, "..." },
+    { "BME280",       ModuleHealth::UNKNOWN, "..." },
+    { "DHT11",        ModuleHealth::UNKNOWN, "..." },
+    { "Karta SD",     ModuleHealth::UNKNOWN, "..." },
+    { "GPS",          ModuleHealth::UNKNOWN, "..." },
+    { "Cmd Handler",  ModuleHealth::OK,      "OK" },
+    { "Extra Servos", ModuleHealth::UNKNOWN, "..." },
+    { "Control Panel",ModuleHealth::UNKNOWN, "..." }
+};
+// ----------------------------------------------------
+
 void setup() {
   pinMode(LED_BUILTIN, OUTPUT); // Inicjalizacja wbudowanej diody LED
   Serial.begin(9600);
@@ -234,6 +254,8 @@ void setup() {
   lcd.clear();
   lcd.setCursor(0, 0);
   lcd.print("Boot: SmartTent...");
+  delay(2000);
+  lcd.clear();
 
   if (g_runtimeFlags.sleepModeEnabled) {
     Serial.println(F("Tryb oszczędzania energii WŁĄCZONY."));
@@ -244,63 +266,66 @@ void setup() {
     powerManager.powerUpPeripherals();
   }
   
-  // ZMIANA: Wyświetlanie statusu inicjalizacji na LCD
+  // --- ZBIERANIE STATUSÓW INICJALIZACJI ---
+  auto& rtcStatus = g_moduleStatuses[static_cast<int>(ModuleID::RTC)];
   if (clock.init()) {
     Serial.println(F("Zegar RTC OK."));
-    lcd.printStatus("Zegar RTC", "OK", 1);
+    rtcStatus.health = ModuleHealth::OK;
+    strcpy(rtcStatus.statusText, "OK");
     clock.configureForAlarm();
     clock.clearAlarm(1);
     if (clock.lostPower()) {
       Serial.println(F("RTC stracił zasilanie! Ustawiam czas na czas kompilacji."));
-      // ZMIANA: Aktualizujemy status na LCD, informując o synchronizacji
-      lcd.printStatus("Zegar RTC", "LOST POWER -> SYNC", 1);
+      rtcStatus.health = ModuleHealth::WARNING;
+      strcpy(rtcStatus.statusText, "SYNC...");
       clock.adjust(DateTime(F(__DATE__), F(__TIME__)));
+      strcpy(rtcStatus.statusText, "OK (Synced)");
     }
   } else {
     Serial.println(F("Błąd inicjalizacji zegara RTC!"));
-    lcd.printStatus("Zegar RTC", "FAIL", 1);
+    rtcStatus.health = ModuleHealth::ERROR;
+    strcpy(rtcStatus.statusText, "FAIL");
   }
 
+  auto& bmeStatus = g_moduleStatuses[static_cast<int>(ModuleID::BME280)];
   if (sensor.init()) {
     Serial.println(F("Czujnik BME280 OK."));
-    lcd.printStatus("BME280", "OK", 2);
+    bmeStatus.health = ModuleHealth::OK;
+    strcpy(bmeStatus.statusText, "OK");
   } else {
     Serial.println(F("Błąd inicjalizacji czujnika BME280!"));
-    lcd.printStatus("BME280", "FAIL", 2);
+    bmeStatus.health = ModuleHealth::ERROR;
+    strcpy(bmeStatus.statusText, "FAIL");
   }
 
+  auto& dhtStatus = g_moduleStatuses[static_cast<int>(ModuleID::DHT11)];
   dhtSensor.init();
-  // Dodajemy informację o statusie DHT11 na LCD
-  lcd.printStatus("DHT11", "OK", 3); // ZMIANA: Przeniesiono do wiersza 3
   Serial.println(F("Czujnik DHT11 zainicjalizowany."));
+  dhtStatus.health = ModuleHealth::OK;
+  strcpy(dhtStatus.statusText, "OK");
 
-  // Inicjalizacja panelu sterowania (zawsze, niezależnie od trybu)
+  auto& panelStatus = g_moduleStatuses[static_cast<int>(ModuleID::CONTROL_PANEL)];
   controlPanel.begin();
   Serial.println(F("Panel sterowania zainicjalizowany."));
-  // ZMIANA: Używamy nowej klasy SoundPlayer
-  soundPlayer.playStartupSound();
+  panelStatus.health = ModuleHealth::OK;
+  strcpy(panelStatus.statusText, "OK");
 
-  // ZMIANA: Dodajemy informację o gotowości CommandHandler
-  lcd.printStatus("Cmd Handler", "OK", 3);
-
-  // ZMIANA: Dodajemy informację o statusie GPS
-  lcd.printStatus("GPS", "INIT", 0);
-
-  // Inicjalizacja karty SD (zawsze, niezależnie od trybu uśpienia)
+  auto& sdStatus = g_moduleStatuses[static_cast<int>(ModuleID::SD_CARD)];
   if (sdCard.init()) {
-    lcd.printStatus("Karta SD", "OK", 0); // ZMIANA: Przeniesiono do wiersza 0
+    sdStatus.health = ModuleHealth::OK;
+    strcpy(sdStatus.statusText, "OK");
+    if (sdCard.readConfiguration("config.txt", g_config)) {
+      Serial.println(F("Konfiguracja wczytana pomyślnie."));
+      strcat(sdStatus.statusText, "+CFG");
+    } else {
+      Serial.println(F("Nie udało się wczytać konfiguracji, używam wartości domyślnych."));
+      strcat(sdStatus.statusText, "+DEF");
+    }
   } else {
-    lcd.printStatus("Karta SD", "FAIL", 0); // ZMIANA: Przeniesiono do wiersza 0
+    sdStatus.health = ModuleHealth::ERROR;
+    strcpy(sdStatus.statusText, "FAIL");
   }
 
-  // Odczyt pliku konfiguracyjnego
-  if (sdCard.readConfiguration("config.txt", g_config)) {
-    Serial.println(F("Konfiguracja wczytana pomyślnie."));
-  } else {
-    Serial.println(F("Nie udało się wczytać konfiguracji, używam wartości domyślnych."));
-  }
-
-  // Zastosowanie wczytanej konfiguracji
   powerManager.setActiveModeDuration(g_config.activeModeMinutes);
   sensorUpdateTimer.setInterval(g_config.sensorUpdateIntervalMs);
   led.init(g_config.ledBrightness);
@@ -309,26 +334,46 @@ void setup() {
   // Inaczej używałby on wartości domyślnej, a nie tej z pliku config.txt.
   const_cast<SunTrackerConfig&>(trackerConfig).runningUpdateIntervalMs = g_config.trackerUpdateIntervalMs;
 
-  // Inicjalizacja dodatkowych serwomechanizmów
+  auto& servoStatus = g_moduleStatuses[static_cast<int>(ModuleID::EXTRA_SERVOS)];
   if (SERVO_COUNT > 0) {
     for (int i = 0; i < SERVO_COUNT; i++) {
       servos[i].begin(servoConfigs[i].pin, servoConfigs[i].name, 0);
     }
-    lcd.printStatus("Extra Servos", "OK", 3);
+    servoStatus.health = ModuleHealth::OK;
+    strcpy(servoStatus.statusText, "OK");
   } else {
-    lcd.printStatus("Extra Servos", "OFF", 3);
+    servoStatus.health = ModuleHealth::DISABLED;
+    strcpy(servoStatus.statusText, "OFF");
   }
 
-  // Inicjalizacja pozostałych modułów, które nie zwracają statusu
+  auto& gpsStatus = g_moduleStatuses[static_cast<int>(ModuleID::GPS)];
+  gpsStatus.health = ModuleHealth::INITIALIZING;
+  strcpy(gpsStatus.statusText, "INIT...");
+
   sunTracker.begin();
   Serial.println("SunTracker zainicjalizowany.");
-  led.init(g_config.ledBrightness);
   Serial.println(F("Wyświetlacz LED zainicjalizowany."));
 
-  delay(1000); // Krótki czas na odczytanie ostatniego statusu
+  // --- ZMIANA: Uporządkowana sekwencja startowa na LCD ---
+  // 1. Przekazujemy statusy do modułu LCD i przełączamy na ekran statusu.
+  //    W tym momencie _statusScreenPage jest resetowane do 0.
+  lcd.setModuleStatuses(g_moduleStatuses, static_cast<int>(ModuleID::MODULE_COUNT));
+  lcd.nextScreen(); // Przełącza z MAIN na STATUS
+
+  // 2. Rysujemy i wyświetlamy pierwszą stronę statusów (strona 0).
+  lcd.update(g_sensorData); // Ręczne wywołanie, aby narysować ekran
+  delay(3000);
+
+  // 3. Rysujemy i wyświetlamy drugą stronę statusów (strona 1).
+  //    Logika w update() automatycznie przełączy stronę po 5 sekundach,
+  //    ale my wymuszamy to teraz, aby pokazać ją w sekwencji startowej.
+  lcd.update(g_sensorData); // Ponowne wywołanie, które (po upływie timera) przełączy stronę
+  delay(1000);
+
   lcd.printWelcomeMessage();
-  // ZMIANA: Używamy nowej klasy SoundPlayer
-  // soundPlayer.playXFilesTheme();
+  soundPlayer.playStartupSound();
+  delay(1500);
+  lcd.showMainScreen();
 }
 
 // --- Prywatna funkcja pomocnicza do obsługi logiki w trybie aktywnym ---
@@ -378,6 +423,17 @@ void handleActiveMode() {
     g_sensorData.gps_minute = gps.getMinute();
     g_sensorData.gps_second = gps.getSecond();
 
+    // ZMIANA: Dynamiczna aktualizacja statusu GPS
+    auto& gpsStatus = g_moduleStatuses[static_cast<int>(ModuleID::GPS)];
+    if (g_sensorData.gps_is_valid) {
+      gpsStatus.health = ModuleHealth::OK;
+      snprintf(gpsStatus.statusText, sizeof(gpsStatus.statusText), "FIXED (%d)", g_sensorData.gps_sats);
+    } else {
+      gpsStatus.health = ModuleHealth::WARNING;
+      strcpy(gpsStatus.statusText, "SEARCHING");
+    }
+    // Koniec zmiany
+
 
     lcd.update(g_sensorData);
     sdCard.logSensorData(g_sensorData, "datalog.txt");
@@ -425,6 +481,11 @@ void loop() {
     lcd.previousScreen();
   }
 
+  // ZMIANA: Używamy kliknięcia enkodera do powrotu na ekran główny
+  if (controlPanel.wasEncoderClicked()) {
+    lcd.showMainScreen();
+  }
+
   // ZMIANA: Aktualizujemy stan modułu GPS w każdej pętli
   gps.update();
 
@@ -443,9 +504,8 @@ void loop() {
     }
   }
 
-  if (g_runtimeFlags.sleepModeEnabled) {
-    powerManager.update();
-  }
+  // ZMIANA: Maszyna stanów PowerManager musi być aktualizowana zawsze, niezależnie od trybu.
+  powerManager.update();
   
   // Aktualizacja stanu serwomechanizmów (musi być wywoływana w każdej pętli)
   for (int i = 0; i < SERVO_COUNT; i++) {
@@ -459,9 +519,9 @@ void loop() {
     handleActiveMode();
     
     if (heartbeatTimer.isReady()) { 
-      printStatusReport();
-      // ZMIANA: Dodajemy cykliczne wyświetlanie stanu panelu sterowania
-      controlPanel.printDebugInfo();
+      // printStatusReport();
+      // // ZMIANA: Dodajemy cykliczne wyświetlanie stanu panelu sterowania
+      // controlPanel.printDebugInfo();
     }
   }
 }

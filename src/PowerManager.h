@@ -11,6 +11,7 @@
 #include "WeatherSensor.h"
 #include "DhtSensor.h"
 #include "Timer.h"
+#include "DeviceStatus.h" // ZMIANA: Dodajemy brakujący nagłówek
 
 enum class LogicLevel {
   ACTIVE_LOW,
