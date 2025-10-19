@@ -68,6 +68,22 @@ JoyDirection ControlPanel::_getDirection(int x, int y) {
     return CENTER;
 }
 
+const char* ControlPanel::_directionToString(JoyDirection dir) {
+    switch (dir) {
+        case CENTER:     return "CENTER";
+        case UP:         return "UP";
+        case DOWN:       return "DOWN";
+        case LEFT:       return "LEFT";
+        case RIGHT:      return "RIGHT";
+        case UP_LEFT:    return "UP_LEFT";
+        case UP_RIGHT:   return "UP_RIGHT";
+        case DOWN_LEFT:  return "DOWN_LEFT";
+        case DOWN_RIGHT: return "DOWN_RIGHT";
+        default:         return "UNKNOWN";
+    }
+}
+
+
 // --- Implementacje getterów (zmienione i nowe) ---
 
 int ControlPanel::getJoy1XRaw() { return _joy1X; }
@@ -130,9 +146,23 @@ void ControlPanel::printDebugInfo() {
   Serial.print(F(", "));
   Serial.print(getJoy1YMapped());
   Serial.print(F(" | Dir: "));
-  Serial.print(getJoy1Direction());
+  Serial.print(_directionToString(getJoy1Direction()));
   Serial.print(F(" | Btn: "));
   Serial.println(isJoy1Pressed() ? F("PRESSED") : F("RELEASED"));
+
+  // Joystick 2
+  Serial.print(F("Joy2: Raw(X,Y): "));
+  Serial.print(getJoy2XRaw());
+  Serial.print(F(", "));
+  Serial.print(getJoy2YRaw());
+  Serial.print(F(" | Mapped(X,Y): "));
+  Serial.print(getJoy2XMapped());
+  Serial.print(F(", "));
+  Serial.print(getJoy2YMapped());
+  Serial.print(F(" | Dir: "));
+  Serial.print(_directionToString(getJoy2Direction()));
+  Serial.print(F(" | Btn: "));
+  Serial.println(isJoy2Pressed() ? F("PRESSED") : F("RELEASED"));
 
   // Enkoder
   Serial.print(F("Encoder: Value: "));

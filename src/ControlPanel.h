@@ -71,6 +71,7 @@ private:
   // NOWOŚĆ: Prywatne metody do logiki joysticka
   int _applyDeadZoneAndMap(int value);
   JoyDirection _getDirection(int x, int y);
+  const char* _directionToString(JoyDirection dir);
   
   ModulePins _pins;
   Encoder _encoder;
