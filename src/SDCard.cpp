@@ -51,7 +51,7 @@ void SDCard::logSensorData(const SensorData& data, const char* filename) {
     dtostrf(data.hum_dht, 4, 2, floatBuffer[5]);
 
     int written = snprintf(buffer, sizeof(buffer), "%s|%s|%s|%s|%s|%s|%s|%s",
-             data.dateStr.c_str(), data.timeForLcd.c_str(),
+             data.dateStr, data.timeForLcd,
              floatBuffer[0], floatBuffer[1], floatBuffer[2], floatBuffer[3], floatBuffer[4], floatBuffer[5]);
 
     if (written > 0) dataFile.println(buffer);

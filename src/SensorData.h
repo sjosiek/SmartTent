@@ -2,10 +2,9 @@
 #define SENSORDATA_H
 
 #include <Arduino.h>
-
 struct SensorData {
-  String dateStr;
-  String timeForLcd;
+  char dateStr[11];    // "YYYY-MM-DD\0"
+  char timeForLcd[9];  // "HH:MM:SS\0"
   uint8_t hour;
   uint8_t minute;
   float temp_bme;

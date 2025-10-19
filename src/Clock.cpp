@@ -13,24 +13,15 @@ DateTime Clock::getTime() {
   return rtc.now();
 }
 
-String Clock::formatDate(const DateTime& dt) {
-  constexpr size_t bufferSize = 11; // "YYYY-MM-DD\0"
-  char buffer[bufferSize];
-  snprintf(buffer, sizeof(buffer), "%04d-%02d-%02d", dt.year(), dt.month(), dt.day());
-  return String(buffer);
+void Clock::formatDate(const DateTime& dt, char* buffer, size_t bufferSize) {
+  snprintf(buffer, bufferSize, "%04d-%02d-%02d", dt.year(), dt.month(), dt.day());
 }
 
-String Clock::formatTime(const DateTime& dt, bool withSeconds) {
+void Clock::formatTime(const DateTime& dt, char* buffer, size_t bufferSize, bool withSeconds) {
   if (withSeconds) {
-    constexpr size_t bufferSize = 9; // "HH:MM:SS\0"
-    char buffer[bufferSize];
-    snprintf(buffer, sizeof(buffer), "%02d:%02d:%02d", dt.hour(), dt.minute(), dt.second());
-    return String(buffer);
+    snprintf(buffer, bufferSize, "%02d:%02d:%02d", dt.hour(), dt.minute(), dt.second());
   } else {
-    constexpr size_t bufferSize = 6; // "HH:MM\0"
-    char buffer[bufferSize];
-    snprintf(buffer, sizeof(buffer), "%02d:%02d", dt.hour(), dt.minute());
-    return String(buffer);
+    snprintf(buffer, bufferSize, "%02d:%02d", dt.hour(), dt.minute());
   }
 }
 

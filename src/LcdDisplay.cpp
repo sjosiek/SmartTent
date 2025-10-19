@@ -97,7 +97,7 @@ void LcdDisplay::update(const SensorData& data) {
 void LcdDisplay::_drawMainScreen(const SensorData& data) {
   char buffer[21];
   lcd.setCursor(0, 0);
-  snprintf(buffer, sizeof(buffer), "%s  %s", data.dateStr.c_str(), data.timeForLcd.c_str());
+  snprintf(buffer, sizeof(buffer), "%s  %s", data.dateStr, data.timeForLcd);
   lcd.print(buffer);
 
   lcd.setCursor(0, 1);

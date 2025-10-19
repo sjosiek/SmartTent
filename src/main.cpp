@@ -392,8 +392,8 @@ void handleActiveMode() {
     dhtSensor.readData();
 
     DateTime now = clock.getTime();
-    g_sensorData.dateStr = Clock::formatDate(now);
-    g_sensorData.timeForLcd = Clock::formatTime(now, true);
+    Clock::formatDate(now, g_sensorData.dateStr, sizeof(g_sensorData.dateStr));
+    Clock::formatTime(now, g_sensorData.timeForLcd, sizeof(g_sensorData.timeForLcd), true);
     g_sensorData.hour = now.hour();
     g_sensorData.minute = now.minute();
 
@@ -454,8 +454,8 @@ void printStatusReport() {
 
   char buffer[128];
   snprintf(buffer, sizeof(buffer),
-           "Czas: %s | Temp(Z/N): %.1f/%.1fC | Wilg(Z/N): %.0f/%.0f%% | Cisn: %.1fhPa",
-           g_sensorData.timeForLcd.c_str(), (double)g_sensorData.temp_bme, (double)g_sensorData.temp_dht,
+           "Czas: %s | Temp(Z/N): %.1f/%.1fC | Wilg(Z/N): %.0f/%.0f%% | Cisn: %.1fhPa", g_sensorData.timeForLcd,
+           (double)g_sensorData.temp_bme, (double)g_sensorData.temp_dht,
            (double)g_sensorData.hum_bme, (double)g_sensorData.hum_dht, (double)g_sensorData.pressure_bme);
   Serial.println(buffer);
   snprintf(buffer, sizeof(buffer),
