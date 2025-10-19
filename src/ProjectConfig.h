@@ -62,7 +62,7 @@ constexpr uint8_t TOUCH_SENSOR_PIN = 3; // Przerwanie 1
 constexpr uint8_t POWER_CONTROL_PIN = 4;
 
 // --- Czujniki ---
-constexpr uint8_t DHT_PIN = 6;
+constexpr uint8_t DHT_PIN = 46;
 constexpr uint8_t DHT_TYPE = DHT11;
 
 // --- Wyświetlacze ---
