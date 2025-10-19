@@ -175,6 +175,13 @@ void LcdDisplay::_drawStatusScreen() {
   lcd.setCursor(0, 0);
   lcd.print(F("Status Modulow"));
 
+  // ZMIANA: Dodajemy szczegółowe logowanie do portu szeregowego
+  Serial.println(F("\n[DEBUG] Rysowanie ekranu statusu..."));
+  Serial.print(F("  - Aktualna strona: ")); Serial.println(_statusScreenPage);
+  Serial.print(F("  - Liczba modułów: ")); Serial.println(_moduleStatusCount);
+  Serial.print(F("  - Elementów na stronę: ")); Serial.println(itemsPerPage);
+  // Koniec zmiany
+
   if (!_moduleStatuses || _moduleStatusCount == 0) {
     printLine("Brak danych statusu", 1);
     return;
@@ -187,7 +194,14 @@ void LcdDisplay::_drawStatusScreen() {
     int row = i + 1;
     if (currentIdx < _moduleStatusCount) {
       char buffer[_cols + 1];
-      snprintf(buffer, sizeof(buffer), "%-13s: %s", _moduleStatuses[currentIdx].name, _moduleStatuses[currentIdx].statusText);
+      // ZMIANA: Usunięto wyrównanie tekstu ("%-13s"), które powodowało obcinanie
+      // dłuższych nazw modułów lub statusów.
+      snprintf(buffer, sizeof(buffer), "%s: %s", _moduleStatuses[currentIdx].name, _moduleStatuses[currentIdx].statusText);
+      
+      // ZMIANA: Logujemy, co dokładnie zostanie wydrukowane w danym wierszu
+      Serial.print(F("  - Rysuję wiersz ")); Serial.print(row);
+      Serial.print(F(": '")); Serial.print(buffer); Serial.println(F("'"));
+
       printLine(buffer, row);
     } else {
       printLine("", row); // Wyczyść resztę linii
@@ -210,12 +224,14 @@ void LcdDisplay::printLine(const char* text, int row) {
   if (!_isInitialized) return;
   lcd.setCursor(0, row);
   
-  char buffer[_cols + 1];
-  
-  // Formatowanie z dopełnieniem spacjami, aby wyczyścić całą linię
-  snprintf(buffer, sizeof(buffer), "%-*.*s", _cols, _cols, text);
-  
-  lcd.print(buffer);
+  // ZMIANA KRYTYCZNA: Usunięto problematyczne, podwójne użycie snprintf.
+  // Teraz drukujemy tekst, a następnie ręcznie dopełniamy linię spacjami,
+  // aby ją wyczyścić. To jest bardziej niezawodne.
+  int textLen = lcd.print(text);
+  // Dopełnij resztę linii spacjami
+  for (int i = textLen; i < _cols; i++) {
+    lcd.print(' ');
+  }
 }
 
 void LcdDisplay::showTemporaryMessage(const char* line1, const char* line2, uint32_t duration) {
@@ -270,6 +286,17 @@ void LcdDisplay::previousScreen() {
     _statusPageTimer.reset(); // Zresetuj timer, aby odliczał od nowa
   }
   lcd.clear(); // Wyczyść ekran przy zmianie
+}
+
+void LcdDisplay::nextStatusPage() {
+  // Ta metoda jest przeznaczona głównie do użytku w sekwencji startowej,
+  // aby wymusić pokazanie kolejnych stron bez czekania na timer.
+  if (_currentScreen != LcdScreen::STATUS) return;
+  const int itemsPerPage = _rows - 1;
+  const int numPages = (_moduleStatusCount + itemsPerPage - 1) / itemsPerPage;
+  if (numPages > 1) {
+    _statusScreenPage = (_statusScreenPage + 1) % numPages;
+  }
 }
 
 // ZMIANA: Implementacja gettera

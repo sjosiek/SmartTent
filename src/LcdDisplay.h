@@ -31,6 +31,7 @@ public:
   void backlight();
   // ZMIANA: Metoda do przekazania wskaźnika na tablicę statusów
   void setModuleStatuses(const ModuleStatus* statuses, int count);
+  void nextStatusPage(); // NOWA METODA: Ręczne przełączenie strony statusu
   
   // ZMIANA: Enum musi być publiczny, aby można go było używać jako typ zwracany
   enum class LcdScreen {

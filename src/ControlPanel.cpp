@@ -116,12 +116,15 @@ void ControlPanel::resetEncoder(long newValue) { _encoder.write(newValue * 4); }
 
 int ControlPanel::getEncoderChange() {
   long currentValue = _encoder.read();
-  if (currentValue >= _lastEncoderValue + 4) {
-    _lastEncoderValue = currentValue;
+  // ZMIANA KRYTYCZNA: Poprawiona logika obsługi enkodera.
+  // Zamiast przeskakiwać do nowej wartości, "konsumujemy" zmianę krok po kroku.
+  // To zapewnia, że szybkie obroty są poprawnie rejestrowane jako wiele kroków.
+  if (currentValue >= _lastEncoderValue + 4) { // Standardowy enkoder ma 4 stany na jeden "klik".
+    _lastEncoderValue += 4;
     return 1; // Obrót w prawo
   }
   if (currentValue <= _lastEncoderValue - 4) {
-    _lastEncoderValue = currentValue;
+    _lastEncoderValue -= 4;
     return -1; // Obrót w lewo
   }
   return 0; // Brak zmiany

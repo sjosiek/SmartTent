@@ -364,15 +364,15 @@ void setup() {
   lcd.update(g_sensorData); // Ręczne wywołanie, aby narysować ekran
   delay(3000);
 
-  // 3. Rysujemy i wyświetlamy drugą stronę statusów (strona 1).
-  //    Logika w update() automatycznie przełączy stronę po 5 sekundach,
-  //    ale my wymuszamy to teraz, aby pokazać ją w sekwencji startowej.
-  lcd.update(g_sensorData); // Ponowne wywołanie, które (po upływie timera) przełączy stronę
-  delay(1000);
+  // 3. Ręcznie przełączamy na drugą stronę statusów i ją rysujemy.
+  lcd.nextStatusPage();
+  lcd.clear(); // Czyścimy ekran przed narysowaniem nowej strony
+  lcd.update(g_sensorData);
+  delay(3000);
 
   lcd.printWelcomeMessage();
   soundPlayer.playStartupSound();
-  delay(1500);
+  delay(3000);
   lcd.showMainScreen();
 }
 
