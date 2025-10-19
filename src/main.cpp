@@ -63,6 +63,7 @@
 #include "ControlPanel.h"    // Dołączamy klasę panelu sterowania
 #include "GPSModule.h"    // GPS
 #include "HardwareConfigReader.h" // Czytnik DIP switch
+#include "SoundPlayer.h"     // ZMIANA: Dołączamy nową klasę do obsługi dźwięków
 
 // --- Konfiguracja działania trackera---
 // Zmieniono na standardową inicjalizację C++, aby zapewnić kompatybilność z kompilatorem avr-gcc.
@@ -138,6 +139,8 @@ const ModulePins controlPanelPins = {
 
 ControlPanel controlPanel(controlPanelPins);
 
+// ZMIANA: Inicjalizacja odtwarzacza dźwięków
+SoundPlayer soundPlayer(controlPanel);
 
 //Inicjalizacja modułów
 SunTracker sunTracker(trackerPins, trackerConfig, controlPanel);  //SUnTracker
@@ -178,8 +181,6 @@ Timer ledUpdateTimer(500);
 Timer heartbeatTimer(1000);  // ZMIANA: Heartbeat co 1 sekundę
 Timer builtinLedTimer(1000); // Timer do mrugania wbudowaną diodą LED
 Timer errorLedTimer(200);    // Szybszy timer do sygnalizacji błędu
-
-
 
 void setup() {
   pinMode(LED_BUILTIN, OUTPUT); // Inicjalizacja wbudowanej diody LED
@@ -276,6 +277,8 @@ void setup() {
   // Inicjalizacja panelu sterowania (zawsze, niezależnie od trybu)
   controlPanel.begin();
   Serial.println(F("Panel sterowania zainicjalizowany."));
+  // ZMIANA: Używamy nowej klasy SoundPlayer
+  soundPlayer.playStartupSound();
 
   // ZMIANA: Dodajemy informację o gotowości CommandHandler
   lcd.printStatus("Cmd Handler", "OK", 3);
@@ -322,8 +325,10 @@ void setup() {
   led.init(g_config.ledBrightness);
   Serial.println(F("Wyświetlacz LED zainicjalizowany."));
 
-  delay(2000); // Czas na odczytanie statusu
+  delay(1000); // Krótki czas na odczytanie ostatniego statusu
   lcd.printWelcomeMessage();
+  // ZMIANA: Używamy nowej klasy SoundPlayer
+  // soundPlayer.playXFilesTheme();
 }
 
 // --- Prywatna funkcja pomocnicza do obsługi logiki w trybie aktywnym ---
@@ -455,6 +460,8 @@ void loop() {
     
     if (heartbeatTimer.isReady()) { 
       printStatusReport();
+      // ZMIANA: Dodajemy cykliczne wyświetlanie stanu panelu sterowania
+      controlPanel.printDebugInfo();
     }
   }
 }

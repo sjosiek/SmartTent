@@ -121,9 +121,9 @@ void LcdDisplay::_drawGpsScreen(const SensorData& data) {
 
   lcd.setCursor(0, 0);
   if (data.gps_is_valid) {
-    snprintf(buffer, sizeof(buffer), "Sats: %-2d | St: FIXED ", data.gps_sats);
+    snprintf(buffer, sizeof(buffer), "Sats: %-2d | FIXED ", data.gps_sats);
   } else {
-    snprintf(buffer, sizeof(buffer), "Sats: -- | St: SEARCH");
+    snprintf(buffer, sizeof(buffer), "Sats: -- | SEARCH");
   }
   lcd.print(buffer);
 

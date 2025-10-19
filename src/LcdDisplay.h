@@ -15,12 +15,14 @@ public:
   void printSleepMessage(); // NOWA METODA
   void update(const SensorData& data);
   void printStatus(const char* module, const char* status, int row); // NOWA METODA
+  void printLine(const char* text, int row);
   void showTemporaryMessage(const char* line1, const char* line2, uint32_t duration);
   // NOWE METODY: Umożliwiają ustawienie kursora i wypisanie tekstu
   void nextScreen();
   void previousScreen();
   void setCursor(uint8_t col, uint8_t row);
   void print(const char* text);
+  void print(const __FlashStringHelper* text); // NOWA METODA: Przeciążenie dla F()
   void clear();
   void noBacklight();
   void backlight();
@@ -42,6 +44,8 @@ private:
   void _drawGpsScreen(const SensorData& data);
   LiquidCrystal_I2C lcd;
   uint8_t _address;
+  uint8_t _cols;
+  uint8_t _rows;
   bool _isInitialized;
   // ZMIANA: Zmienne do obsługi wiadomości tymczasowych
   uint32_t _tempMessageEndTime = 0;
