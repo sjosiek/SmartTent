@@ -4,6 +4,7 @@
 #define COMMAND_HANDLER_H
 
 #include <Arduino.h>
+#include <strings.h> // ZMIANA: Dodajemy dla funkcji strcasecmp
 #include "Clock.h"
 #include "LcdDisplay.h" // Dołączamy LcdDisplay
 #include "SDCard.h"

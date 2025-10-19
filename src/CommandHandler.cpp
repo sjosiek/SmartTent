@@ -8,42 +8,50 @@ CommandHandler::CommandHandler(Clock& clock, LcdDisplay& lcd, SDCard& sdCard, Co
 
 void CommandHandler::update() {
   if (Serial.available() > 0) {
-    String command = Serial.readStringUntil('\n');
-    command.trim();
+    // ZMIANA: Zastępujemy String buforem char[], aby uniknąć alokacji pamięci.
+    char command[64]; // Bufor na komendę, 64 znaki powinny wystarczyć.
+    int bytesRead = Serial.readBytesUntil('\n', command, sizeof(command) - 1);
+    command[bytesRead] = '\0'; // Ręcznie dodajemy terminator null.
+
+    // Ręczny "trim" - usuwamy znaki powrotu karetki z końca, jeśli istnieją.
+    if (bytesRead > 0 && command[bytesRead - 1] == '\r') {
+      command[bytesRead - 1] = '\0';
+    }
 
     // ZMIANA: Wyświetl komunikat na LCD
     char buffer[21];
-    snprintf(buffer, sizeof(buffer), "CMD: %s", command.c_str());
+    snprintf(buffer, sizeof(buffer), "CMD: %s", command);
     _lcd->showTemporaryMessage("Odebrano komende:", buffer, 5000);
 
     Serial.print(F("Odebrano z portu szeregowego: \""));
     Serial.print(command);
     Serial.println(F("\""));
 
-    if (command.startsWith("TIME:")) {
+    if (strncmp(command, "TIME:", 5) == 0) {
       int year, month, day, hour, minute, second;
       // Używamy sscanf do parsowania formatu: TIME:YYYY-MM-DD,HH:MM:SS
-      if (sscanf(command.c_str(), "TIME:%d-%d-%d,%d:%d:%d", &year, &month, &day, &hour, &minute, &second) == 6) {
+      if (sscanf(command, "TIME:%d-%d-%d,%d:%d:%d", &year, &month, &day, &hour, &minute, &second) == 6) {
         Serial.println(F("Rozpoznano i poprawnie sparsowano komendę synchronizacji czasu."));
         _clock->adjust(DateTime(year, month, day, hour, minute, second));
 
-        String confirmation = F("OK: Czas zsynchronizowany do ");
-        confirmation += command.substring(5); // Wycinamy tylko dane do potwierdzenia
+        // ZMIANA: Używamy bufora zamiast String do wysłania potwierdzenia.
+        char confirmation[40];
+        snprintf(confirmation, sizeof(confirmation), "OK: Czas zsynchronizowany do %s", command + 5);
         Serial.println(confirmation);
       } else {
         Serial.println(F("BŁĄD: Nieprawidłowy format komendy TIME. Oczekiwano: TIME:YYYY-MM-DD,HH:MM:SS"));
       }
-    } else if (command == "SAVE_CONFIG") {
+    } else if (strcmp(command, "SAVE_CONFIG") == 0) {
       Serial.println(F("Rozpoznano komendę zapisu konfiguracji."));
       if (_sdCard->writeConfiguration(*_config, "config.txt")) {
         Serial.println(F("OK: Konfiguracja zapisana."));
       } else {
         Serial.println(F("BŁĄD: Nie udało się zapisać konfiguracji na karcie SD."));
       }
-    } else if (command.startsWith("SERVO:")) {
+    } else if (strncmp(command, "SERVO:", 6) == 0) {
       int servoIndex, position;
       // Używamy sscanf do parsowania formatu: SERVO:<index>:<pozycja>
-      if (sscanf(command.c_str(), "SERVO:%d:%d", &servoIndex, &position) == 2) {
+      if (sscanf(command, "SERVO:%d:%d", &servoIndex, &position) == 2) {
         if (servoIndex >= 0 && servoIndex < _servoCount) {
           Serial.print(F("OK: Ustawiam pozycję docelową dla SERVO"));
           Serial.print(servoIndex); Serial.print(F(" na: ")); Serial.println(position);
@@ -54,17 +62,16 @@ void CommandHandler::update() {
       } else {
         Serial.println(F("BŁĄD: Nieprawidłowy format komendy SERVO. Oczekiwano: SERVO:<index>:<pozycja>"));
       }
-    } else if (command.startsWith("SERVO_MOVE:")) {
+    } else if (strncmp(command, "SERVO_MOVE:", 11) == 0) {
       int servoIndex;
       char directionBuffer[10]; // Bufor na "LEFT" lub "RIGHT"
       // Używamy sscanf do parsowania formatu: SERVO_MOVE:<index>:<kierunek>
-      if (sscanf(command.c_str(), "SERVO_MOVE:%d:%s", &servoIndex, directionBuffer) == 2) {
+      if (sscanf(command, "SERVO_MOVE:%d:%s", &servoIndex, directionBuffer) == 2) {
           if (servoIndex >= 0 && servoIndex < _servoCount) {
-              String direction(directionBuffer);
-              direction.toUpperCase();
-              if (direction == "LEFT") {
+              // ZMIANA: Używamy strcasecmp do porównywania stringów bez względu na wielkość liter.
+              if (strcasecmp(directionBuffer, "LEFT") == 0) {
                   _servos[servoIndex].moveLeft();
-              } else if (direction == "RIGHT") {
+              } else if (strcasecmp(directionBuffer, "RIGHT") == 0) {
                   _servos[servoIndex].moveRight();
               } else {
                   Serial.println(F("BŁĄD: Nieprawidłowy kierunek (użyj LEFT lub RIGHT)."));
@@ -75,7 +82,7 @@ void CommandHandler::update() {
       } else {
         Serial.println(F("BŁĄD: Nieprawidłowy format komendy SERVO_MOVE. Oczekiwano: SERVO_MOVE:<index>:<LEFT|RIGHT>"));
       }
-    } else if (command == "CALIBRATE_SERVOS") {
+    } else if (strcmp(command, "CALIBRATE_SERVOS") == 0) {
       for (int i = 0; i < _servoCount; i++) {
         _servos[i].startCalibration();
       }
