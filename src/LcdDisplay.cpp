@@ -1,12 +1,13 @@
 // Plik: LcdDisplay.cpp
+#include "Clock.h" // Potrzebne dla DateTime i TimeSpan
 
 #include "LcdDisplay.h"
 
 const char DEGREE_SYMBOL = 223; // Definicja symbolu stopnia
 // ZMIANA: Inicjalizujemy timer w liście inicjalizacyjnej konstruktora
 LcdDisplay::LcdDisplay(uint8_t address, uint8_t cols, uint8_t rows)
-    : lcd(address, cols, rows), _address(address), _cols(cols), _rows(rows), 
-      _isInitialized(false), _statusPageTimer(5000), _gpsPageTimer(5000) {} // 5 sekund na stronę
+    : lcd(address, cols, rows), _address(address), _cols(cols), _rows(rows),
+      _isInitialized(false), _statusPageTimer(5000) {} // 5 sekund na stronę
 
 void LcdDisplay::init() {
   _isInitialized = checkAndInit();
@@ -73,15 +74,6 @@ void LcdDisplay::update(const SensorData& data) {
     }
   }
 
-  // ZMIANA: Logika automatycznej paginacji dla ekranu GPS
-  if (_currentScreen == LcdScreen::GPS) {
-    if (_gpsPageTimer.isReady()) {
-      // Mamy 2 strony (0 i 1)
-      _gpsScreenPage = (_gpsScreenPage + 1) % 2;
-      lcd.clear(); // Wyczyść, aby przerysować nową stronę
-    }
-  }
-
   // ZMIANA: Dyspozytor, który wywołuje odpowiednią funkcję rysującą
   switch (_currentScreen) {
     case LcdScreen::MAIN:
@@ -144,28 +136,41 @@ void LcdDisplay::_drawGpsScreen(const SensorData& data) {
   char buffer[21];
   char float_buf[12];
 
+  // Linia 0: Data i czas z GPS (skorygowane o strefę czasową)
   lcd.setCursor(0, 0);
-  if (data.gps_is_valid) {
-    snprintf(buffer, sizeof(buffer), "Sats: %-2d | FIXED ", data.gps_sats);
-  } else {
-    snprintf(buffer, sizeof(buffer), "Sats: -- | SEARCH");
-  }
-  lcd.print(buffer);
-
-  lcd.setCursor(0, 1);
   if (data.gps_time_valid) {
-    snprintf(buffer, sizeof(buffer), "%04d-%02d-%02d  %02d:%02d:%02d", data.gps_year, data.gps_month, data.gps_day, data.gps_hour, data.gps_minute, data.gps_second);
+    // Tworzymy obiekt DateTime z surowych danych GPS (UTC)
+    DateTime gps_utc_dt(data.gps_year, data.gps_month, data.gps_day,
+                        data.gps_hour, data.gps_minute, data.gps_second);
+
+    // Stosujemy offset strefy czasowej dla Polski.
+    // Jest to uproszczone podejście (+1 godzina dla CET).
+    // Pełne rozwiązanie wymagałoby sprawdzenia czasu letniego (DST),
+    // co dodałoby +2 godziny w lecie.
+    TimeSpan timezone_offset(0, 1, 0, 0); // Offset 1 godzina
+    DateTime adjusted_dt = gps_utc_dt + timezone_offset;
+
+    char date_str[11]; // YYYY-MM-DD
+    char time_str[9];  // HH:MM:SS
+    Clock::formatDate(adjusted_dt, date_str, sizeof(date_str));
+    Clock::formatTime(adjusted_dt, time_str, sizeof(time_str), true); // z sekundami
+
+    snprintf(buffer, sizeof(buffer), "%s %s CET", date_str, time_str);
   } else {
-    snprintf(buffer, sizeof(buffer), "---- -- --  --:--:--");
+    snprintf(buffer, sizeof(buffer), "---- -- -- --:--:-- NO SYNC");
   }
   lcd.print(buffer);
 
-  lcd.setCursor(0, 2);
+  // Linia 1: Prędkości (km/h i węzły)
+  lcd.setCursor(0, 1);
   if (data.gps_is_valid) {
-    dtostrf(data.gps_lat, 4, 6, float_buf);
-    snprintf(buffer, sizeof(buffer), "Lat: %s", float_buf);
+    char speed_kph_buf[8];
+    char speed_kts_buf[8];
+    dtostrf(data.gps_speed_kph, 3, 1, speed_kph_buf); // np. "12.3"
+    dtostrf(data.gps_speed_kts, 3, 1, speed_kts_buf); // np. "10.0"
+    snprintf(buffer, sizeof(buffer), "Spd: %s km/h %s kts", speed_kph_buf, speed_kts_buf);
   } else {
-    snprintf(buffer, sizeof(buffer), "Lat: ---");
+    snprintf(buffer, sizeof(buffer), "Spd: --.- km/h --.- kts");
   }
   lcd.print(buffer);
 
@@ -176,6 +181,20 @@ void LcdDisplay::_drawGpsScreen(const SensorData& data) {
   } else {
     snprintf(buffer, sizeof(buffer), "Lon: ---");
   }
+  lcd.print(buffer);
+
+  // Linia 2: Szerokość geograficzna
+  lcd.setCursor(0, 2);
+  if (data.gps_is_valid) {
+    dtostrf(data.gps_lat, 4, 6, float_buf); // float_buf jest już zadeklarowany
+    snprintf(buffer, sizeof(buffer), "Lat: %s", float_buf);
+  } else {
+    snprintf(buffer, sizeof(buffer), "Lat: ---");
+  }
+  lcd.print(buffer);
+
+  // Linia 3: Długość geograficzna (przeniesiona z poprzedniej linii 3)
+  lcd.setCursor(0, 3); // Upewniamy się, że kursor jest na właściwej linii
   lcd.print(buffer);
 }
 
@@ -270,11 +289,6 @@ void LcdDisplay::nextScreen() {
     _statusScreenPage = 0;
     _statusPageTimer.reset(); // Zresetuj timer, aby odliczał od nowa
   }
-  // ZMIANA: Resetujemy stronę GPS przy przejściu na ten ekran
-  if (_currentScreen == LcdScreen::GPS) {
-    _gpsScreenPage = 0;
-    _gpsPageTimer.reset();
-  }
   lcd.clear(); // Wyczyść ekran przy zmianie
 }
 
@@ -298,11 +312,6 @@ void LcdDisplay::previousScreen() {
   if (_currentScreen == LcdScreen::STATUS) {
     _statusScreenPage = 0;
     _statusPageTimer.reset(); // Zresetuj timer, aby odliczał od nowa
-  }
-  // ZMIANA: Resetujemy stronę GPS przy przejściu na ten ekran
-  if (_currentScreen == LcdScreen::GPS) {
-    _gpsScreenPage = 0;
-    _gpsPageTimer.reset();
   }
   lcd.clear(); // Wyczyść ekran przy zmianie
 }
