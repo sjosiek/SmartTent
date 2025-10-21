@@ -5,8 +5,8 @@
 const char DEGREE_SYMBOL = 223; // Definicja symbolu stopnia
 // ZMIANA: Inicjalizujemy timer w liście inicjalizacyjnej konstruktora
 LcdDisplay::LcdDisplay(uint8_t address, uint8_t cols, uint8_t rows)
-    : lcd(address, cols, rows), _address(address), _cols(cols), _rows(rows),
-      _isInitialized(false), _statusPageTimer(5000) {} // 5 sekund na stronę
+    : lcd(address, cols, rows), _address(address), _cols(cols), _rows(rows), 
+      _isInitialized(false), _statusPageTimer(5000), _gpsPageTimer(5000) {} // 5 sekund na stronę
 
 void LcdDisplay::init() {
   _isInitialized = checkAndInit();
