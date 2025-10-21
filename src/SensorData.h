@@ -33,6 +33,9 @@ struct SensorData {
   uint8_t gps_hour;
   uint8_t gps_minute;
   uint8_t gps_second;
+  float gps_speed_kph; // NOWE POLE
+  float gps_speed_kts; // NOWE POLE
+  float gps_heading;   // NOWE POLE
 };
 
 #endif

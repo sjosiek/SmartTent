@@ -438,6 +438,9 @@ void handleActiveMode() {
     g_sensorData.gps_hour = gps.getHour();
     g_sensorData.gps_minute = gps.getMinute();
     g_sensorData.gps_second = gps.getSecond();
+    g_sensorData.gps_speed_kph = gps.getSpeedKph();
+    g_sensorData.gps_speed_kts = gps.getSpeedKts();
+    g_sensorData.gps_heading = gps.getHeading();
 
     // ZMIANA: Dynamiczna aktualizacja statusu GPS
     auto& gpsStatus = g_moduleStatuses[static_cast<int>(ModuleID::GPS)];

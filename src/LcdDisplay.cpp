@@ -73,6 +73,15 @@ void LcdDisplay::update(const SensorData& data) {
     }
   }
 
+  // ZMIANA: Logika automatycznej paginacji dla ekranu GPS
+  if (_currentScreen == LcdScreen::GPS) {
+    if (_gpsPageTimer.isReady()) {
+      // Mamy 2 strony (0 i 1)
+      _gpsScreenPage = (_gpsScreenPage + 1) % 2;
+      lcd.clear(); // Wyczyść, aby przerysować nową stronę
+    }
+  }
+
   // ZMIANA: Dyspozytor, który wywołuje odpowiednią funkcję rysującą
   switch (_currentScreen) {
     case LcdScreen::MAIN:
@@ -261,6 +270,11 @@ void LcdDisplay::nextScreen() {
     _statusScreenPage = 0;
     _statusPageTimer.reset(); // Zresetuj timer, aby odliczał od nowa
   }
+  // ZMIANA: Resetujemy stronę GPS przy przejściu na ten ekran
+  if (_currentScreen == LcdScreen::GPS) {
+    _gpsScreenPage = 0;
+    _gpsPageTimer.reset();
+  }
   lcd.clear(); // Wyczyść ekran przy zmianie
 }
 
@@ -284,6 +298,11 @@ void LcdDisplay::previousScreen() {
   if (_currentScreen == LcdScreen::STATUS) {
     _statusScreenPage = 0;
     _statusPageTimer.reset(); // Zresetuj timer, aby odliczał od nowa
+  }
+  // ZMIANA: Resetujemy stronę GPS przy przejściu na ten ekran
+  if (_currentScreen == LcdScreen::GPS) {
+    _gpsScreenPage = 0;
+    _gpsPageTimer.reset();
   }
   lcd.clear(); // Wyczyść ekran przy zmianie
 }

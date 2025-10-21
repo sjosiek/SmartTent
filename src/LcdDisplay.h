@@ -63,7 +63,9 @@ private:
   const ModuleStatus* _moduleStatuses = nullptr;
   int _moduleStatusCount = 0;
   int _statusScreenPage = 0; // Do paginacji ekranu statusu
+  int _gpsScreenPage = 0;    // ZMIANA: Paginacja dla ekranu GPS
   Timer _statusPageTimer;    // ZMIANA: Timer do automatycznego przewijania stron statusu
+  Timer _gpsPageTimer;       // ZMIANA: Timer dla ekranu GPS
 };
 
 #endif
