@@ -6,7 +6,7 @@
 #include <SPI.h>
 #include <SD.h>
 #include "SensorData.h"
-#include "Configuration.h"
+#include "ProjectConfig.h"
 
 class SDCard {
 public:

@@ -10,17 +10,12 @@ void LedDisplay::init(uint8_t brightness) {
   display.setBrightness(brightness);
 }
 
-void LedDisplay::update(String time) {
+void LedDisplay::update(uint8_t hour, uint8_t minute) {
   colonVisible = !colonVisible;
 
-  if (time.length() == 5) {
-    int hour = time.substring(0, 2).toInt();
-    int minute = time.substring(3, 5).toInt();
-    int timeValue = hour * 100 + minute;
-    
-    uint8_t colonBitmask = colonVisible ? 0b01000000 : 0;
-    
-    display.showNumberDecEx(timeValue, colonBitmask, true);
-  }
+  int timeValue = hour * 100 + minute;
+  
+  uint8_t colonBitmask = colonVisible ? 0b01000000 : 0;
+  
+  display.showNumberDecEx(timeValue, colonBitmask, true);
 }
-

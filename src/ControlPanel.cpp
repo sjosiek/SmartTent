@@ -2,21 +2,18 @@
 
 ControlPanel::ControlPanel(const ModulePins& pins) :
   _pins(pins),
-  _encoder(pins.encDT, pins.encCLK)
-{
-  _lastJoy1BtnState = HIGH;
-  _lastJoy2BtnState = HIGH;
-  _lastEncBtnState = HIGH;
-}
+  _encoder(pins.encDT, pins.encCLK),
+  // ZMIANA: Inicjalizujemy obiekty DebouncedButton odpowiednimi pinami.
+  // Domyślnie używają one logiki ACTIVE_LOW, co jest poprawne dla INPUT_PULLUP.
+  _joy1Button(pins.joy1Btn),
+  _joy2Button(pins.joy2Btn),
+  _encButton(pins.encBtn)
+{}
 
 // ZMIANA: begin() zapisuje ustawienia martwego pola
 void ControlPanel::begin(int joyCenter, int joyDeadZone) {
   _joyCenter = joyCenter;
   _joyDeadZone = joyDeadZone;
-  
-  pinMode(_pins.joy1Btn, INPUT_PULLUP);
-  pinMode(_pins.joy2Btn, INPUT_PULLUP);
-  pinMode(_pins.encBtn, INPUT_PULLUP);
   pinMode(_pins.buzzer, OUTPUT);
 }
 
@@ -27,20 +24,16 @@ void ControlPanel::update() {
   _joy2X = analogRead(_pins.joy2X);
   _joy2Y = analogRead(_pins.joy2Y);
 
-  _encoderValue = _encoder.read();
+  // ZMIANA: Odczytujemy wartości z potencjometrów
+  _pot1 = analogRead(_pins.pot1);
+  _pot2 = analogRead(_pins.pot2);
+  _pot3 = analogRead(_pins.pot3);
+  _pot4 = analogRead(_pins.pot4);
 
-  // Logika przycisków bez zmian...
-  _joy1BtnState = digitalRead(_pins.joy1Btn);
-  if (_joy1BtnState == LOW && _lastJoy1BtnState == HIGH) _joy1Clicked = true;
-  _lastJoy1BtnState = _joy1BtnState;
-
-  _joy2BtnState = digitalRead(_pins.joy2Btn);
-  if (_joy2BtnState == LOW && _lastJoy2BtnState == HIGH) _joy2Clicked = true;
-  _lastJoy2BtnState = _joy2BtnState;
-
-  _encBtnState = digitalRead(_pins.encBtn);
-  if (_encBtnState == LOW && _lastEncBtnState == HIGH) _encClicked = true;
-  _lastEncBtnState = _encBtnState;
+  // ZMIANA: Aktualizujemy stan wszystkich przycisków za pomocą ich dedykowanych obiektów.
+  _joy1Button.update();
+  _joy2Button.update();
+  _encButton.update();
 }
 
 // --- NOWOŚĆ: Prywatne metody pomocnicze ---
@@ -75,6 +68,22 @@ JoyDirection ControlPanel::_getDirection(int x, int y) {
     return CENTER;
 }
 
+const char* ControlPanel::_directionToString(JoyDirection dir) {
+    switch (dir) {
+        case CENTER:     return "CENTER";
+        case UP:         return "UP";
+        case DOWN:       return "DOWN";
+        case LEFT:       return "LEFT";
+        case RIGHT:      return "RIGHT";
+        case UP_LEFT:    return "UP_LEFT";
+        case UP_RIGHT:   return "UP_RIGHT";
+        case DOWN_LEFT:  return "DOWN_LEFT";
+        case DOWN_RIGHT: return "DOWN_RIGHT";
+        default:         return "UNKNOWN";
+    }
+}
+
+
 // --- Implementacje getterów (zmienione i nowe) ---
 
 int ControlPanel::getJoy1XRaw() { return _joy1X; }
@@ -82,13 +91,8 @@ int ControlPanel::getJoy1YRaw() { return _joy1Y; }
 int ControlPanel::getJoy1XMapped() { return _applyDeadZoneAndMap(_joy1X); }
 int ControlPanel::getJoy1YMapped() { return _applyDeadZoneAndMap(_joy1Y); }
 JoyDirection ControlPanel::getJoy1Direction() { return _getDirection(_joy1X, _joy1Y); }
-
-// ... reszta getterów dla Joy1 bez zmian (isPressed, wasClicked) ...
-bool ControlPanel::isJoy1Pressed() { return _joy1BtnState == LOW; }
-bool ControlPanel::wasJoy1Clicked() {
-  if (_joy1Clicked) { _joy1Clicked = false; return true; }
-  return false;
-}
+bool ControlPanel::isJoy1Pressed() { return _joy1Button.isPressed(); }
+bool ControlPanel::wasJoy1Clicked() { return _joy1Button.wasPressed(); }
 
 // Analogicznie dla Joysticka 2
 int ControlPanel::getJoy2XRaw() { return _joy2X; }
@@ -96,21 +100,77 @@ int ControlPanel::getJoy2YRaw() { return _joy2Y; }
 int ControlPanel::getJoy2XMapped() { return _applyDeadZoneAndMap(_joy2X); }
 int ControlPanel::getJoy2YMapped() { return _applyDeadZoneAndMap(_joy2Y); }
 JoyDirection ControlPanel::getJoy2Direction() { return _getDirection(_joy2X, _joy2Y); }
-bool ControlPanel::isJoy2Pressed() { return _joy2BtnState == LOW; }
-bool ControlPanel::wasJoy2Clicked() {
-  if (_joy2Clicked) { _joy2Clicked = false; return true; }
-  return false;
-}
+bool ControlPanel::isJoy2Pressed() { return _joy2Button.isPressed(); }
+bool ControlPanel::wasJoy2Clicked() { return _joy2Button.wasPressed(); }
+
+// ZMIANA: Implementacja getterów dla potencjometrów
+int ControlPanel::getPot1Raw() { return _pot1; }
+int ControlPanel::getPot2Raw() { return _pot2; }
+int ControlPanel::getPot3Raw() { return _pot3; }
+int ControlPanel::getPot4Raw() { return _pot4; }
 
 
 // Reszta metod (encoder, buzzer) bez zmian
-long ControlPanel::getEncoderValue() { return _encoderValue / 4; }
+long ControlPanel::getEncoderValue() { return _encoder.read() / 4; }
 void ControlPanel::resetEncoder(long newValue) { _encoder.write(newValue * 4); }
-bool ControlPanel::isEncoderPressed() { return _encBtnState == LOW; }
-bool ControlPanel::wasEncoderClicked() {
-  if (_encClicked) { _encClicked = false; return true; }
-  return false;
+
+int ControlPanel::getEncoderChange() {
+  long currentValue = _encoder.read();
+  // ZMIANA KRYTYCZNA: Poprawiona logika obsługi enkodera.
+  // Zamiast przeskakiwać do nowej wartości, "konsumujemy" zmianę krok po kroku.
+  // To zapewnia, że szybkie obroty są poprawnie rejestrowane jako wiele kroków.
+  if (currentValue >= _lastEncoderValue + 4) { // Standardowy enkoder ma 4 stany na jeden "klik".
+    _lastEncoderValue += 4;
+    return 1; // Obrót w prawo
+  }
+  if (currentValue <= _lastEncoderValue - 4) {
+    _lastEncoderValue -= 4;
+    return -1; // Obrót w lewo
+  }
+  return 0; // Brak zmiany
 }
+
+bool ControlPanel::isEncoderPressed() { return _encButton.isPressed(); }
+bool ControlPanel::wasEncoderClicked() { return _encButton.wasPressed(); }
 void ControlPanel::beep(unsigned int frequency, unsigned long duration) { tone(_pins.buzzer, frequency, duration); }
 void ControlPanel::playTone(unsigned int frequency) { tone(_pins.buzzer, frequency); }
 void ControlPanel::stopTone() { noTone(_pins.buzzer); }
+
+void ControlPanel::printDebugInfo() {
+  Serial.println(F("--- Control Panel Debug ---"));
+  
+  // Joystick 1
+  Serial.print(F("Joy1: Raw(X,Y): "));
+  Serial.print(getJoy1XRaw());
+  Serial.print(F(", "));
+  Serial.print(getJoy1YRaw());
+  Serial.print(F(" | Mapped(X,Y): "));
+  Serial.print(getJoy1XMapped());
+  Serial.print(F(", "));
+  Serial.print(getJoy1YMapped());
+  Serial.print(F(" | Dir: "));
+  Serial.print(_directionToString(getJoy1Direction()));
+  Serial.print(F(" | Btn: "));
+  Serial.println(isJoy1Pressed() ? F("PRESSED") : F("RELEASED"));
+
+  // Joystick 2
+  Serial.print(F("Joy2: Raw(X,Y): "));
+  Serial.print(getJoy2XRaw());
+  Serial.print(F(", "));
+  Serial.print(getJoy2YRaw());
+  Serial.print(F(" | Mapped(X,Y): "));
+  Serial.print(getJoy2XMapped());
+  Serial.print(F(", "));
+  Serial.print(getJoy2YMapped());
+  Serial.print(F(" | Dir: "));
+  Serial.print(_directionToString(getJoy2Direction()));
+  Serial.print(F(" | Btn: "));
+  Serial.println(isJoy2Pressed() ? F("PRESSED") : F("RELEASED"));
+
+  // Enkoder
+  Serial.print(F("Encoder: Value: "));
+  Serial.print(getEncoderValue());
+  Serial.print(F(" | Btn: "));
+  Serial.println(isEncoderPressed() ? F("PRESSED") : F("RELEASED"));
+  Serial.println(F("---------------------------"));
+}

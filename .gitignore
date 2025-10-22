@@ -43,3 +43,4 @@
 # PlatformIO/VSCode specific
 .pio/
 .vscode/
+lib/NeoGPS/examples/*

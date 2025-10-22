@@ -1,6 +1,6 @@
 # SmartTent
 
-Projekt inteligentnego namiotu (lub stacji pogodowej) opartego na platformie Arduino. System monitoruje warunki otoczenia, zarządza energią i pozwala na sterowanie elementami wykonawczymi, takimi jak serwomechanizmy.
+Projekt inteligentnego namiotu (lub stacji pogodowej) opartego na platformie Arduino. System monitoruje warunki otoczenia (temperaturę, wilgotność, ciśnienie), zarządza energią w trybie oszczędzania, a także steruje modułem śledzenia słońca (`SunTracker`) w celu optymalnego ustawienia paneli solarnych.
 
 ## 1. Opis Pinów (Arduino Mega)
 
@@ -24,6 +24,7 @@ Poniższa tabela przedstawia listę pinów wykorzystywanych przez projekt.
 |                  | A4    | Oś X joysticka do manualnego sterowania                           | Sun Tracker                  |
 |                  | A5    | Oś Y joysticka do manualnego sterowania                           | Sun Tracker                  |
 |                  | 35    | Przycisk (SW) joysticka                                           | Sun Tracker                  |
+|                  | 35    | Przycisk (SW) joysticka do przełączania trybów                    | Sun Tracker                  |
 | **System**       | 13    | Wbudowana dioda LED (sygnalizacja pracy/błędu)                    | Arduino                      |
 
 ## 2. Konfiguracja i Sterowanie
@@ -58,18 +59,6 @@ Konfiguracja odbywa się poprzez strukturę `trackerConfig`.
 *   `defaultTolerance`: Czułość trackera. Określa, jak duża musi być różnica w odczytach z fotorezystorów, aby wywołać ruch serw.
 *   `runningUpdateIntervalMs`: Co ile milisekund tracker ma sprawdzać pozycję słońca i korygować ustawienie.
 
-#### Konfiguracja serwomechanizmów
-
-*   `servoConfigs[]`
-    *   **Opis:** Tablica definiująca podłączone serwomechanizmy (poza tymi od Sun Trackera).
-    *   **Przykład użycia:**
-        ```cpp
-        const ServoConfig servoConfigs[] = {
-          { A8, "Wywietrznik" },
-          { A9, "Klapa" }
-        };
-        ```
-
 ### 2.2. Konfiguracja w pliku `config.txt` (karta SD)
 
 Te ustawienia są wczytywane przy starcie systemu i można je zmieniać bez potrzeby ponownej kompilacji kodu. Plik `config.txt` powinien mieć format `klucz=wartość`.
@@ -87,21 +76,20 @@ Te ustawienia są wczytywane przy starcie systemu i można je zmieniać bez potr
     *   **Wartości:** `0` (wyłączony) do `15` (najjaśniejszy).
     *   **Przykład:** `led_brightness=10`
 
-*   `servo_pos_X`
-    *   **Opis:** Docelowa pozycja (w stopniach) dla serwomechanizmu o indeksie `X` (np. `servo_pos_0`, `servo_pos_1`).
-    *   **Przykład:** `servo_pos_0=90`
-
 ### 2.3. Sterowanie przez port szeregowy (Serial)
 
 System nasłuchuje na komendy wysyłane przez port szeregowy.
 
 *   **Synchronizacja czasu:**
-    *   **Komenda:** `SYNC_TIME:YYYY-MM-DDTHH:MM:SS`
+    *   **Komenda:** `TIME:YYYY-MM-DD,HH:MM:SS`
     *   **Opis:** Ustawia datę i godzinę w zegarze RTC.
-    *   **Przykład:** `SYNC_TIME:2023-10-27T10:30:00`
+    *   **Przykład:** `TIME:2023-10-27,10:30:00`
 
-*   **Ustawienie pozycji serwa:**
+*   **Sterowanie serwami (Sun Tracker):**
     *   **Komenda:** `SERVO:[index]:[pozycja]`
-    *   **Opis:** Ustawia serwo o podanym indeksie w tablicy `servoConfigs` na zadaną pozycję.
-    *   **Przykład:** `SERVO:0:120` (ustawi pierwsze zdefiniowane serwo na pozycję 120 stopni).
-
+    *   **Opis:** Ustawia serwo modułu Sun Tracker na zadaną pozycję.
+    *   **Indeksy:** `0` - serwo poziome (H), `1` - serwo pionowe (V).
+    *   **Przykład:** `SERVO:0:120` (ustawi serwo poziome na pozycję 120 stopni).
+    *   **Komenda:** `SERVO_MOVE:[index]:[LEFT|RIGHT]`
+    *   **Opis:** Przesuwa serwo o jeden krok w zadanym kierunku.
+    *   **Przykład:** `SERVO_MOVE:1:LEFT` (przesunie serwo pionowe o jeden krok "w górę").

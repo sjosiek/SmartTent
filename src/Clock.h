@@ -12,8 +12,8 @@ public:
   bool init();
   DateTime getTime();
 
-  static String formatDate(const DateTime& dt);
-  static String formatTime(const DateTime& dt, bool withSeconds = false);
+  static void formatDate(const DateTime& dt, char* buffer, size_t bufferSize);
+  static void formatTime(const DateTime& dt, char* buffer, size_t bufferSize, bool withSeconds = false);
 
   void configureForAlarm();
   float getTemperature();

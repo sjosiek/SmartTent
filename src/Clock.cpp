@@ -5,31 +5,23 @@
 Clock::Clock() {}
 
 bool Clock::init() {
-  if (!rtc.begin()) {
-    return false;
-  }
-  return true;
+  // Uproszczenie: rtc.begin() zwraca bool, więc możemy go zwrócić bezpośrednio.
+  return rtc.begin();
 }
 
 DateTime Clock::getTime() {
   return rtc.now();
 }
 
-String Clock::formatDate(const DateTime& dt) {
-  char buffer[11]; // Bufor na "YYYY-MM-DD\0"
-  snprintf(buffer, sizeof(buffer), "%04d-%02d-%02d", dt.year(), dt.month(), dt.day());
-  return String(buffer);
+void Clock::formatDate(const DateTime& dt, char* buffer, size_t bufferSize) {
+  snprintf(buffer, bufferSize, "%04d-%02d-%02d", dt.year(), dt.month(), dt.day());
 }
 
-String Clock::formatTime(const DateTime& dt, bool withSeconds) {
+void Clock::formatTime(const DateTime& dt, char* buffer, size_t bufferSize, bool withSeconds) {
   if (withSeconds) {
-    char buffer[9]; // Bufor na "HH:MM:SS\0"
-    snprintf(buffer, sizeof(buffer), "%02d:%02d:%02d", dt.hour(), dt.minute(), dt.second());
-    return String(buffer);
+    snprintf(buffer, bufferSize, "%02d:%02d:%02d", dt.hour(), dt.minute(), dt.second());
   } else {
-    char buffer[6]; // Bufor na "HH:MM\0"
-    snprintf(buffer, sizeof(buffer), "%02d:%02d", dt.hour(), dt.minute());
-    return String(buffer);
+    snprintf(buffer, bufferSize, "%02d:%02d", dt.hour(), dt.minute());
   }
 }
 

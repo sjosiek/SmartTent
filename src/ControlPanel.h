@@ -2,6 +2,7 @@
 #define CONTROL_PANEL_H
 
 #include <Arduino.h>
+#include "DebouncedButton.h" // Dołączamy nową klasę
 #include <Encoder.h>
 
 // NOWOŚĆ: Enum do reprezentowania kierunków joysticka
@@ -16,6 +17,8 @@ struct ModulePins {
   byte joy2X, joy2Y, joy2Btn;
   byte encDT, encCLK, encBtn;
   byte buzzer;
+  // ZMIANA: Dodajemy piny dla potencjometrów
+  byte pot1, pot2, pot3, pot4;
 };
 
 class ControlPanel {
@@ -45,6 +48,13 @@ public:
   bool isJoy2Pressed();
   bool wasJoy2Clicked();
   
+  // ZMIANA: Gettery dla potencjometrów
+  int getPot1Raw();
+  int getPot2Raw();
+  int getPot3Raw();
+  int getPot4Raw();
+
+  int getEncoderChange(); // Zwraca 1 (prawo), -1 (lewo) lub 0
   long getEncoderValue();
   void resetEncoder(long newValue = 0);
   bool isEncoderPressed();
@@ -54,22 +64,26 @@ public:
   void playTone(unsigned int frequency);
   void stopTone();
 
+  // Metoda do debugowania
+  void printDebugInfo();
+
 private:
   // NOWOŚĆ: Prywatne metody do logiki joysticka
   int _applyDeadZoneAndMap(int value);
   JoyDirection _getDirection(int x, int y);
+  const char* _directionToString(JoyDirection dir);
   
   ModulePins _pins;
   Encoder _encoder;
-  long _encoderValue;
+  long _lastEncoderValue;
   int _joy1X, _joy1Y, _joy2X, _joy2Y;
-  bool _joy1BtnState, _joy2BtnState, _encBtnState;
-  bool _lastJoy1BtnState, _lastJoy2BtnState, _lastEncBtnState;
-  bool _joy1Clicked, _joy2Clicked, _encClicked;
+  int _pot1, _pot2, _pot3, _pot4;
 
+  // ZMIANA: Używamy dedykowanej klasy do obsługi przycisków
+  DebouncedButton _joy1Button, _joy2Button, _encButton;
+  
   // NOWOŚĆ: Zmienne do obsługi martwego pola
   int _joyCenter;
   int _joyDeadZone;
 };
-
 #endif
