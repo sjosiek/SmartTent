@@ -504,11 +504,14 @@ void loop() {
   if (controlPanel.wasEncoderClicked()) {
     lcd.showMainScreen();
   }
+  wdt_reset();
 
   // ZMIANA: Aktualizujemy stan modułu GPS w każdej pętli
   gps.update();
+  wdt_reset();
 
   sunTracker.update();
+  wdt_reset();
 
   // Mruganie wbudowaną diodą LED jako "heartbeat" systemu
   if (sdCard.isOK()) {
@@ -525,6 +528,7 @@ void loop() {
 
   // ZMIANA: Maszyna stanów PowerManager musi być aktualizowana zawsze, niezależnie od trybu.
   powerManager.update();
+  wdt_reset();
   
   // Aktualizacja stanu serwomechanizmów (musi być wywoływana w każdej pętli)
   for (int i = 0; i < SERVO_COUNT; i++) {
@@ -532,15 +536,18 @@ void loop() {
       // Serwo jest w ruchu, można coś z tym zrobić, jeśli potrzeba
     }
   }
+  wdt_reset();
 
   if (!g_runtimeFlags.sleepModeEnabled || powerManager.isAwake()) {
     // Wywołujemy nową, wydzieloną funkcję
     handleActiveMode();
+  wdt_reset();
     
     if (heartbeatTimer.isReady()) { 
       // printStatusReport();
       // // ZMIANA: Dodajemy cykliczne wyświetlanie stanu panelu sterowania
       // controlPanel.printDebugInfo();
+      //wdt_reset();
     }
   }
 
