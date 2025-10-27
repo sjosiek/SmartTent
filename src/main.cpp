@@ -65,7 +65,7 @@
 #include "HardwareConfigReader.h" // Czytnik DIP switch
 #include "SoundPlayer.h"     // ZMIANA: Dołączamy nową klasę do obsługi dźwięków
 #include "DeviceStatus.h"    // ZMIANA: Dołączamy nową definicję statusu
-#include <avr/wdt.h>         // ZMIANA: Dołączamy bibliotekę Watchdog Timera
+// #include <avr/wdt.h>         // ZMIANA: Dołączamy bibliotekę Watchdog Timera
 
 // --- Konfiguracja działania trackera---
 // Zmieniono na standardową inicjalizację C++, aby zapewnić kompatybilność z kompilatorem avr-gcc.
@@ -155,7 +155,7 @@ LcdDisplay lcd(LCD_ADDRESS, LCD_COLS, LCD_ROWS);  // LCD
 LedDisplay led(LED_CLK_PIN, LED_DIO_PIN);         // LED
 
 // ZMIANA: Inicjalizacja modułu GPS. Zakładamy, że jest podłączony do portu Serial1.
-GPSModule gps(Serial1);
+GPSModule gps(Serial2); // TEST: Zmieniamy na Serial2
 
 // ZMIANA: Inicjalizacja czytnika przełączników DIP
 HardwareConfigReader dipReader(DIP_LATCH_PIN, DIP_CLOCK_PIN, DIP_DATA_PIN);
@@ -206,21 +206,21 @@ ModuleStatus g_moduleStatuses[static_cast<int>(ModuleID::MODULE_COUNT)] = {
 void setup() {
   pinMode(LED_BUILTIN, OUTPUT); // Inicjalizacja wbudowanej diody LED
   Serial.begin(9600);
+  // ZMIANA: Inicjalizacja portu szeregowego dla GPS na samym początku,
+  // zgodnie z dobrą praktyką - tuż po inicjalizacji głównego portu.
+  Serial2.begin(9600); // TEST: Zmieniamy na Serial2
 
   // ZMIANA: Obsługa Watchdog Timera na samym początku
-  // Sprawdzamy, czy poprzedni reset był spowodowany przez Watchdoga.
-  if (MCUSR & (1 << WDRF)) {
-    Serial.println(F("\n!!! SYSTEM ZRESETOWANY PRZEZ WATCHDOG TIMER !!!"));
-  }
-  // Czyścimy flagi resetu, aby uniknąć fałszywych odczytów w przyszłości.
-  MCUSR = 0;
-  // Natychmiast wyłączamy Watchdoga, aby dać czas na wykonanie całej funkcji setup().
-  wdt_disable();
+  // // Sprawdzamy, czy poprzedni reset był spowodowany przez Watchdoga.
+  // if (MCUSR & (1 << WDRF)) {
+  //   Serial.println(F("\n!!! SYSTEM ZRESETOWANY PRZEZ WATCHDOG TIMER !!!"));
+  // }
+  // // Czyścimy flagi resetu, aby uniknąć fałszywych odczytów w przyszłości.
+  // MCUSR = 0;
+  // // Natychmiast wyłączamy Watchdoga, aby dać czas na wykonanie całej funkcji setup().
+  // wdt_disable();
 
   Serial.println(F("\nBooting SmartTent System..."));
-
-  // ZMIANA: Inicjalizacja portu szeregowego dla GPS
-  Serial1.begin(9600);
 
   // Ustawienie timeoutu dla magistrali I2C, aby uniknąć zawieszenia programu.
   Wire.setWireTimeout(I2C_TIMEOUT_US, true);
@@ -388,8 +388,8 @@ void setup() {
   lcd.showMainScreen();
 
   // ZMIANA: Włączamy Watchdog Timer na końcu setup z timeoutem 2 sekund.
-  Serial.println(F("Inicjalizacja zakończona. Włączam Watchdog Timer (2s)..."));
-  wdt_enable(WDTO_2S);
+  // Serial.println(F("Inicjalizacja zakończona. Włączam Watchdog Timer (2s)..."));
+  // wdt_enable(WDTO_2S);
 }
 
 // --- Prywatna funkcja pomocnicza do obsługi logiki w trybie aktywnym ---
@@ -408,6 +408,7 @@ void handleActiveMode() {
     dhtSensor.readData();
 
     DateTime now = clock.getTime();
+
     Clock::formatDate(now, g_sensorData.dateStr, sizeof(g_sensorData.dateStr));
     Clock::formatTime(now, g_sensorData.timeForLcd, sizeof(g_sensorData.timeForLcd), true);
     g_sensorData.hour = now.hour();
@@ -448,8 +449,10 @@ void handleActiveMode() {
       gpsStatus.health = ModuleHealth::OK;
       snprintf(gpsStatus.statusText, sizeof(gpsStatus.statusText), "FIXED (%d)", g_sensorData.gps_sats);
     } else {
-      gpsStatus.health = ModuleHealth::WARNING;
-      strcpy(gpsStatus.statusText, "SEARCHING");
+      if (gpsStatus.health != ModuleHealth::ERROR) { // Nie nadpisuj stanu błędu
+        gpsStatus.health = ModuleHealth::WARNING;
+        strcpy(gpsStatus.statusText, "SEARCHING");
+      }
     }
     // Koniec zmiany
 
@@ -504,14 +507,14 @@ void loop() {
   if (controlPanel.wasEncoderClicked()) {
     lcd.showMainScreen();
   }
-  wdt_reset();
+  // wdt_reset();
 
   // ZMIANA: Aktualizujemy stan modułu GPS w każdej pętli
+  // To kluczowe dla TinyGPS++, aby mogła ona ciągle przetwarzać dane z portu szeregowego.
   gps.update();
-  wdt_reset();
 
   sunTracker.update();
-  wdt_reset();
+  // wdt_reset();
 
   // Mruganie wbudowaną diodą LED jako "heartbeat" systemu
   if (sdCard.isOK()) {
@@ -528,7 +531,7 @@ void loop() {
 
   // ZMIANA: Maszyna stanów PowerManager musi być aktualizowana zawsze, niezależnie od trybu.
   powerManager.update();
-  wdt_reset();
+  // wdt_reset();
   
   // Aktualizacja stanu serwomechanizmów (musi być wywoływana w każdej pętli)
   for (int i = 0; i < SERVO_COUNT; i++) {
@@ -536,12 +539,12 @@ void loop() {
       // Serwo jest w ruchu, można coś z tym zrobić, jeśli potrzeba
     }
   }
-  wdt_reset();
+  // wdt_reset();
 
   if (!g_runtimeFlags.sleepModeEnabled || powerManager.isAwake()) {
     // Wywołujemy nową, wydzieloną funkcję
     handleActiveMode();
-  wdt_reset();
+  // wdt_reset();
     
     if (heartbeatTimer.isReady()) { 
       // printStatusReport();
@@ -553,5 +556,5 @@ void loop() {
 
   // ZMIANA: "Głaskanie" Watchdoga. Resetujemy jego licznik w każdej pętli,
   // sygnalizując, że program działa poprawnie.
-  wdt_reset();
+  // wdt_reset();
 }
