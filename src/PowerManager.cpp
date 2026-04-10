@@ -111,14 +111,14 @@ void PowerManager::prepareToSleep() {
   _clock->clearAlarm(1);
   DateTime now = _clock->getTime();
   // Ustawiamy alarm na 5 minut w przyszłość, zgodnie z komunikatem.
-  DateTime future(now + TimeSpan(0, 0, 1, 0));
+  DateTime future(now + TimeSpan(0, 0, 1, 0)); // Hardcoded: 1 minuta (TODO: przenieść do config.txt jako sleep_interval_minutes)
   // Używamy DS3231_A1_Date, aby alarm zadziałał o konkretnej dacie i godzinie.
   // Poprzedni tryb (DS3231_A1_Second) powodował, że alarm dzwonił co minutę,
   // gdy tylko sekundy się zgadzały, co nie było zamierzonym zachowaniem.
   if (!_clock->setAlarm1(future, DS3231_A1_Date)) {
     Serial.println(F("Błąd ustawiania alarmu!"));
   }
-  Serial.println(F("Ustawiono alarm na za 1 minutę w przyszłość. Dobranoc."));
+  Serial.println(F("Ustawiono alarm na za 1 minute. Dobranoc."));
   delay(100); // Krótki delay na wszelki wypadek.
   Serial.flush(); // KLUCZOWA ZMIANA: Czekamy, aż wszystkie dane zostaną wysłane przez port szeregowy.
 }

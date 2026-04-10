@@ -20,7 +20,8 @@ SunTracker::SunTracker(const SunTrackerPins& pins, const SunTrackerConfig& confi
       searchVerticalAngle(config.servoVMinAngle),
       bestLightIntensity(-1),
       bestHorizontalAngle(90),
-      bestVerticalAngle(30)
+      bestVerticalAngle(30),
+      topLeftVal(0), topRightVal(0), downLeftVal(0), downRightVal(0)
       
       
       
@@ -47,7 +48,6 @@ void SunTracker::update() {
     verticalServo.update();
 
     if (config.useJoystick) {
-        controlPanel.update();
         if (controlPanel.wasJoy1Clicked()) {
             if (currentState == ProgramState::RUNNING || currentState == ProgramState::PARKED) {
                 currentState = ProgramState::MANUAL_CONTROL;

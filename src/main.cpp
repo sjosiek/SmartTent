@@ -23,7 +23,7 @@
  *   - Czujnik dotykowy TTP223 (OUT) -> 3 (Przerwanie 1)
  *
  * --- Czujniki ---
- *   - Czujnik DHT11/22 (DATA) -> 6
+ *   - Czujnik DHT11/22 (DATA) -> 46
  *
  * --- Wyświetlacze ---
  *   - Wyświetlacz LED TM1637 (CLK -> 22, DIO -> 23)
@@ -119,7 +119,7 @@ const uint32_t I2C_TIMEOUT_US = 25000; // 25000 mikrosekund = 25 milisekund
 
 // Tablica pinów danych, które muszą być de-energetyzowane przed uśpieniem
 const uint8_t DATA_PINS_TO_DEENERGIZE[] = {
-    A4, A5,             // I2C: SDA, SCL
+    20, 21,             // I2C: SDA, SCL (Mega: pin 20=SDA, 21=SCL)
     DHT_PIN,            // DHT11
     LED_CLK_PIN,        // LED Display
     LED_DIO_PIN,        // LED Display,

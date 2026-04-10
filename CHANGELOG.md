@@ -10,6 +10,19 @@ Wersjonowanie według [Semantic Versioning](https://semver.org/lang/pl/): `MAJOR
 
 ---
 
+## [1.1.1] — 2026-04-10 (devplan003)
+
+### Naprawiono
+- **BUG1** `main.cpp:122` — Błędne piny I2C w `DATA_PINS_TO_DEENERGIZE`: `A4, A5` → `20, 21` (Mega SDA/SCL)
+- **BUG2** `SunTracker.cpp:50` — Usunięto podwójne wywołanie `controlPanel.update()` z `SunTracker::update()`
+- **BUG3** `SunTracker.cpp` — Zainicjalizowano `topLeftVal/topRightVal/downLeftVal/downRightVal` na `0` w konstruktorze
+- **BUG4** `LcdDisplay.cpp` — Usunięto debug prints (`[DEBUG]`) z `_drawStatusScreen()`
+- **BUG5** `PowerManager.cpp:114` — Poprawiono komentarz sleep alarmu + dodano TODO dla konfigurowalnego interwału
+- **BUG6** `main.cpp:26` — Poprawiono komentarz pin DHT: `-> 6` → `-> 46`
+- **BUG7** `LcdDisplay.cpp:213,218` — Zastąpiono VLA `char buffer[_cols + 1]` → `char buffer[21]` (2 miejsca)
+
+---
+
 ## [1.1.0] — 2026-04-10 (devplan002)
 
 ### Zmieniono

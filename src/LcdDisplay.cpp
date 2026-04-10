@@ -192,13 +192,6 @@ void LcdDisplay::_drawStatusScreen() {
   lcd.setCursor(0, 0);
   lcd.print(F("Status Modulow"));
 
-  // ZMIANA: Dodajemy szczegółowe logowanie do portu szeregowego
-  Serial.println(F("\n[DEBUG] Rysowanie ekranu statusu..."));
-  Serial.print(F("  - Aktualna strona: ")); Serial.println(_statusScreenPage);
-  Serial.print(F("  - Liczba modułów: ")); Serial.println(_moduleStatusCount);
-  Serial.print(F("  - Elementów na stronę: ")); Serial.println(itemsPerPage);
-  // Koniec zmiany
-
   if (!_moduleStatuses || _moduleStatusCount == 0) {
     printLine("Brak danych statusu", 1);
     return;
@@ -210,15 +203,8 @@ void LcdDisplay::_drawStatusScreen() {
     int currentIdx = startIdx + i;
     int row = i + 1;
     if (currentIdx < _moduleStatusCount) {
-      char buffer[_cols + 1];
-      // ZMIANA: Usunięto wyrównanie tekstu ("%-13s"), które powodowało obcinanie
-      // dłuższych nazw modułów lub statusów.
+      char buffer[21];
       snprintf(buffer, sizeof(buffer), "%s: %s", _moduleStatuses[currentIdx].name, _moduleStatuses[currentIdx].statusText);
-      
-      // ZMIANA: Logujemy, co dokładnie zostanie wydrukowane w danym wierszu
-      Serial.print(F("  - Rysuję wiersz ")); Serial.print(row);
-      Serial.print(F(": '")); Serial.print(buffer); Serial.println(F("'"));
-
       printLine(buffer, row);
     } else {
       printLine("", row); // Wyczyść resztę linii
@@ -229,7 +215,7 @@ void LcdDisplay::_drawStatusScreen() {
 void LcdDisplay::printStatus(const char* module, const char* status, int row) {
   if (!_isInitialized) return;
   lcd.setCursor(0, row);
-  char buffer[_cols + 1];
+  char buffer[21];
 
   // Formatowanie z wyrównaniem do lewej, aby statusy były w jednej linii
   // np. "Zegar RTC        [OK]"
