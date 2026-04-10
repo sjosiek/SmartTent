@@ -2,7 +2,7 @@
 #define GPS_MODULE_H
 
 #include <Arduino.h>
-#include <NMEAGPS.h>
+#include <TinyGPS++.h> // ZMIANA: Używamy biblioteki TinyGPS++
 
 class GPSModule {
 public:
@@ -35,8 +35,7 @@ public:
 private:
   // Zmienne prywatne
   Stream &_gpsStream;
-  NMEAGPS _gps;
-  gps_fix _fix;
+  TinyGPSPlus _gps; // ZMIANA: Obiekt biblioteki TinyGPS++
   
   bool _isValid;
   float _latitude;
