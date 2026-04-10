@@ -1,6 +1,6 @@
 // Plik: LcdDisplay.cpp
 #include "Clock.h" // Potrzebne dla DateTime i TimeSpan
-
+#include "Version.h"
 #include "LcdDisplay.h"
 
 const char DEGREE_SYMBOL = 223; // Definicja symbolu stopnia
@@ -32,8 +32,10 @@ bool LcdDisplay::checkAndInit() {
 void LcdDisplay::printWelcomeMessage() {
   lcd.clear();
   lcd.setCursor(0, 1);
-  lcd.print("      SmartTent");
+  lcd.print("    " FIRMWARE_NAME);
   lcd.setCursor(0, 2);
+  lcd.print("      v" FIRMWARE_VERSION);
+  lcd.setCursor(0, 3);
   lcd.print("    System online");
 }
 

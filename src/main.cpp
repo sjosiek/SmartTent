@@ -65,6 +65,7 @@
 #include "HardwareConfigReader.h" // Czytnik DIP switch
 #include "SoundPlayer.h"     // ZMIANA: Dołączamy nową klasę do obsługi dźwięków
 #include "DeviceStatus.h"    // ZMIANA: Dołączamy nową definicję statusu
+#include "Version.h"         // Wersja firmware
 #include <avr/wdt.h>         // ZMIANA: Dołączamy bibliotekę Watchdog Timera
 
 // --- Konfiguracja działania trackera---
@@ -217,7 +218,7 @@ void setup() {
   // Natychmiast wyłączamy Watchdoga, aby dać czas na wykonanie całej funkcji setup().
   wdt_disable();
 
-  Serial.println(F("\nBooting SmartTent System..."));
+  Serial.println(F("\nBooting " FIRMWARE_BUILD_INFO "..."));
 
   // ZMIANA: Inicjalizacja portu szeregowego dla GPS
   Serial1.begin(9600);
@@ -265,7 +266,7 @@ void setup() {
   lcd.init();
   lcd.clear();
   lcd.setCursor(0, 0);
-  lcd.print("Boot: SmartTent...");
+  lcd.print("Boot: " FIRMWARE_BUILD_INFO);
   delay(2000);
   lcd.clear();
 
