@@ -10,6 +10,22 @@ Wersjonowanie według [Semantic Versioning](https://semver.org/lang/pl/): `MAJOR
 
 ---
 
+## [1.0.1] — 2026-04-10
+
+### Dodano
+- `src/Version.h` — centralna definicja wersji firmware (`FIRMWARE_VERSION`, `FIRMWARE_BUILD_INFO`)
+- Wersja wyświetlana w Serial monitorze przy boot: `Booting SmartTent v1.0.0...`
+- Wersja wyświetlana na LCD podczas boot sequence i ekranie powitalnym
+
+### Dokumentacja
+- `WIRING.md` — pełny schemat połączeń wszystkich modułów + moduł MOSFET (2 warianty)
+- `README.md` — zaktualizowany do aktualnego stanu kodu, dodana sekcja przywracania pamięci Claude
+- `CHANGELOG.md` — wprowadzony (ten plik)
+- `docs/devplan001.md` — wprowadzony system devplanów
+- `claude/` — pliki pamięci kontekstowej dla Claude AI
+
+---
+
 ## [1.0.0] — 2026-04-10
 
 ### Bazowa wersja projektu (inicjalna)
