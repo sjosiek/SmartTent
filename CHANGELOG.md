@@ -10,6 +10,23 @@ Wersjonowanie według [Semantic Versioning](https://semver.org/lang/pl/): `MAJOR
 
 ---
 
+## [1.1.0] — 2026-04-10 (devplan002)
+
+### Zmieniono
+- GPS: migracja biblioteki `NeoGPS` → `TinyGPS++` (`mikalhart/TinyGPSPlus`)
+- GPS: przeniesiony na `Serial2` (pin 16/17 na Mega)
+- GPS: parser przepisany — przetwarzanie znak po znaku w każdej iteracji loop()
+- GPS: status nie nadpisuje stanu ERROR stanem WARNING
+- WDT: tymczasowo wyłączony podczas debugowania GPS
+
+### Dodano
+- `platformio.ini`: biblioteka `mikalhart/TinyGPSPlus`
+
+### Znane ograniczenia
+- WDT wyłączony — do przywrócenia po stabilizacji GPS
+
+---
+
 ## [1.0.1] — 2026-04-10
 
 ### Dodano
