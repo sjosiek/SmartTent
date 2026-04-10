@@ -1,95 +1,167 @@
 # SmartTent
 
-Projekt inteligentnego namiotu (lub stacji pogodowej) opartego na platformie Arduino. System monitoruje warunki otoczenia (temperaturę, wilgotność, ciśnienie), zarządza energią w trybie oszczędzania, a także steruje modułem śledzenia słońca (`SunTracker`) w celu optymalnego ustawienia paneli solarnych.
+Projekt inteligentnego namiotu / stacji pogodowej opartej na **Arduino Mega 2560** (PlatformIO). System monitoruje warunki otoczenia (temperatura, wilgotność, ciśnienie), zarządza energią w trybie oszczędzania, steruje modułem śledzenia słońca (`SunTracker`) oraz rejestruje dane na karcie SD.
 
-## 1. Opis Pinów (Arduino Mega)
+---
 
-Poniższa tabela przedstawia listę pinów wykorzystywanych przez projekt.
+## Claude AI — przywracanie pamięci na nowym komputerze
 
-| Pin              | Numer | Opis                                                              | Moduł/Urządzenie             |
-|------------------|-------|-------------------------------------------------------------------|------------------------------|
-| **I2C**          | 20, 21| Magistrala I2C (SDA, SCL)                                         | LCD, BME280, RTC             |
-| **SPI**          | 50-53 | Magistrala SPI (MISO, MOSI, SCK, CS)                              | Karta SD                     |
-| **Przerwania**   | 2     | Pin alarmu z zegara RTC (SQW) - Przerwanie 0                      | Zegar DS3231 (RTC)           |
-|                  | 3     | Czujnik dotykowy do wybudzania systemu - Przerwanie 1             | Czujnik dotykowy TTP223      |
-| **Zasilanie**    | 4     | Sterowanie zasilaniem peryferiów (tranzystor/przekaźnik)          | Power Manager                |
-| **Czujniki**     | 6     | Linia danych dla czujnika temperatury i wilgotności               | Czujnik DHT11/22             |
-| **Wyświetlacze** | 22, 23| Piny CLK i DIO dla 4-cyfrowego wyświetlacza 7-segmentowego        | Wyświetlacz LED TM1637       |
-| **Sun Tracker**  | 9     | Serwomechanizm osi poziomej (H)                                   | Sun Tracker                  |
-|                  | 10    | Serwomechanizm osi pionowej (V)                                   | Sun Tracker                  |
-|                  | A0    | Fotorezystor Dół-Lewo (DL)                                        | Sun Tracker                  |
-|                  | A1    | Fotorezystor Góra-Lewo (TL)                                       | Sun Tracker                  |
-|                  | A2    | Fotorezystor Góra-Prawo (TR)                                      | Sun Tracker                  |
-|                  | A3    | Fotorezystor Dół-Prawo (DR)                                       | Sun Tracker                  |
-|                  | A4    | Oś X joysticka do manualnego sterowania                           | Sun Tracker                  |
-|                  | A5    | Oś Y joysticka do manualnego sterowania                           | Sun Tracker                  |
-|                  | 35    | Przycisk (SW) joysticka                                           | Sun Tracker                  |
-|                  | 35    | Przycisk (SW) joysticka do przełączania trybów                    | Sun Tracker                  |
-| **System**       | 13    | Wbudowana dioda LED (sygnalizacja pracy/błędu)                    | Arduino                      |
+Katalog [`claude/`](claude/) zawiera pliki pamięci kontekstowej dla Claude Code. Dzięki nim asystent ma pełną wiedzę o projekcie od razu po otwarciu — bez ponownej analizy kodu.
 
-## 2. Konfiguracja i Sterowanie
+**Aby przywrócić pamięć na nowym komputerze:**
 
-Działaniem systemu można sterować na dwa sposoby: poprzez zmienne w kodzie źródłowym (`main.cpp`) oraz za pomocą pliku konfiguracyjnego `config.txt` na karcie SD.
+1. Znajdź lub utwórz katalog pamięci projektu dla Claude. Ścieżka zależy od nazwy katalogu roboczego:
+   ```
+   # Windows
+   %USERPROFILE%\.claude\projects\<nazwa-katalogu-projektu>\memory\
 
-### 2.1. Konfiguracja w kodzie (`main.cpp`)
+   # macOS / Linux
+   ~/.claude/projects/<nazwa-katalogu-projektu>/memory/
+   ```
+   Nazwa katalogu projektu to ścieżka do repo z zamienionymi separatorami na `-`, np.:
+   `c:\PRIV\DEV\SmartTent` → `c--PRIV-DEV-SmartTent`
 
-Te ustawienia wymagają ponownej kompilacji i wgrania programu.
+2. Skopiuj zawartość katalogu `claude/` do powyższej ścieżki:
+   ```bash
+   cp claude/* ~/.claude/projects/c--PRIV-DEV-SmartTent/memory/
+   ```
 
-#### Główny tryb pracy
+3. Gotowe — Claude będzie miał kontekst projektu przy następnej sesji.
 
-*   `SLEEP_MODE_ENABLED`
-    *   **Opis:** Główny przełącznik trybu oszczędzania energii.
-    *   **Wartości:**
-        *   `true`: System będzie przechodził w stan uśpienia i wybudzał się cyklicznie lub za pomocą czujnika dotykowego.
-        *   `false`: System będzie działał w trybie ciągłym, bez usypiania.
+---
 
-#### Konfiguracja modułu śledzenia słońca (Sun Tracker)
+## 1. Mapa połączeń (Arduino Mega 2560)
 
-Konfiguracja odbywa się poprzez strukturę `trackerConfig`.
+### Magistrale
 
-*   `servoVMinAngle` / `servoVMaxAngle`: Minimalny/maksymalny kąt wychylenia dla serwa pionowego.
-*   `servoHMinAngle` / `servoHMaxAngle`: Minimalny/maksymalny kąt wychylenia dla serwa poziomego.
-*   `performLdrCalibration`: (`true`/`false`) - Czy przeprowadzić automatyczną kalibrację fotorezystorów przy starcie.
-*   `performServoCalibration`: (`true`/`false`) - Czy przeprowadzić automatyczną kalibrację serw (przejazd przez pełen zakres ruchu) przy starcie.
-*   `performInitialSearch`: (`true`/`false`) - Czy po uruchomieniu system ma aktywnie szukać najjaśniejszego punktu.
-*   `useJoystick`: (`true`/`false`) - Włącza/wyłącza manualne sterowanie za pomocą joysticka.
-*   `ldrSensorsConnected`: (`true`/`false`) - Informuje system, czy fotorezystory są fizycznie podłączone. Ustaw na `false`, jeśli testujesz tylko ruch serw.
-*   `enableServoMovement`: (`true`/`false`) - Globalna blokada ruchu serwomechanizmów.
-*   `defaultServoSpeed`: Domyślna prędkość ruchu serw (im wyższa wartość, tym wolniejszy ruch).
-*   `defaultTolerance`: Czułość trackera. Określa, jak duża musi być różnica w odczytach z fotorezystorów, aby wywołać ruch serw.
-*   `runningUpdateIntervalMs`: Co ile milisekund tracker ma sprawdzać pozycję słońca i korygować ustawienie.
+| Magistrala | Piny | Urządzenia |
+|------------|------|-----------|
+| **I2C** (SDA/SCL) | 20, 21 | LCD 20x4 (0x27), BME280 (0x76), RTC DS3231 |
+| **SPI** (MOSI/MISO/SCK/CS) | 51, 50, 52, **53** | Karta SD |
+| **Serial1** (RX1/TX1) | 19, 18 | Moduł GPS |
 
-### 2.2. Konfiguracja w pliku `config.txt` (karta SD)
+### Piny cyfrowe i analogowe
 
-Te ustawienia są wczytywane przy starcie systemu i można je zmieniać bez potrzeby ponownej kompilacji kodu. Plik `config.txt` powinien mieć format `klucz=wartość`.
+| Pin | Opis | Moduł |
+|-----|------|-------|
+| **2** | Alarm RTC (SQW) — Przerwanie 0 | RTC DS3231 |
+| **3** | Czujnik dotykowy TTP223 — Przerwanie 1 | Power Manager |
+| **4** | Sterowanie zasilaniem peryferiów (MOSFET gate) | Power Manager |
+| **9** | Serwomechanizm poziomy (H) | Sun Tracker |
+| **10** | Serwomechanizm pionowy (V) | Sun Tracker |
+| **13** | Wbudowana dioda LED (heartbeat / sygnalizacja błędu) | System |
+| **22** | CLK wyświetlacza LED TM1637 | LED Display |
+| **23** | DIO wyświetlacza LED TM1637 | LED Display |
+| **24** | Przycisk joysticka 1 (SW) | Control Panel |
+| **25** | Przycisk joysticka 2 (SW) | Control Panel |
+| **26** | Enkoder obrotowy (DT) | Control Panel |
+| **27** | Enkoder obrotowy (CLK) | Control Panel |
+| **28** | Enkoder obrotowy (SW) | Control Panel |
+| **29** | Buzzer | Control Panel |
+| **30** | DIP switch 74HC165 (LATCH) | HardwareConfigReader |
+| **31** | DIP switch 74HC165 (CLK) | HardwareConfigReader |
+| **32** | DIP switch 74HC165 (DATA) | HardwareConfigReader |
+| **46** | Dane czujnika DHT11/22 | DhtSensor |
+| **A0** | Fotorezystor Dół-Lewo (DL) | Sun Tracker |
+| **A1** | Fotorezystor Góra-Lewo (TL) | Sun Tracker |
+| **A2** | Fotorezystor Góra-Prawo (TR) | Sun Tracker |
+| **A3** | Fotorezystor Dół-Prawo (DR) | Sun Tracker |
+| **A8** | Joystick 1 — oś X | Control Panel |
+| **A9** | Joystick 1 — oś Y | Control Panel |
+| **A10** | Joystick 2 — oś X | Control Panel |
+| **A11** | Joystick 2 — oś Y | Control Panel |
+| **A12–A15** | Potencjometry 1–4 | Control Panel |
 
-*   `active_mode_minutes`
-    *   **Opis:** Czas (w minutach), przez który system pozostaje aktywny po wybudzeniu (w trybie `SLEEP_MODE_ENABLED`).
-    *   **Przykład:** `active_mode_minutes=5`
+---
 
-*   `sensor_update_interval_ms`
-    *   **Opis:** Interwał (w milisekundach), co jaki czas mają być odczytywane dane z czujników i zapisywane na karcie SD.
-    *   **Przykład:** `sensor_update_interval_ms=60000` (co 1 minutę)
+## 2. Konfiguracja i sterowanie
 
-*   `led_brightness`
-    *   **Opis:** Jasność wyświetlacza 7-segmentowego.
-    *   **Wartości:** `0` (wyłączony) do `15` (najjaśniejszy).
-    *   **Przykład:** `led_brightness=10`
+System obsługuje trzy poziomy konfiguracji.
 
-### 2.3. Sterowanie przez port szeregowy (Serial)
+### 2.1. Przełączniki DIP (74HC165) — flagi runtime
 
-System nasłuchuje na komendy wysyłane przez port szeregowy.
+Odczytywane przy starcie przez `HardwareConfigReader`. 16 bitów (8 wolnych na przyszłość).
 
-*   **Synchronizacja czasu:**
-    *   **Komenda:** `TIME:YYYY-MM-DD,HH:MM:SS`
-    *   **Opis:** Ustawia datę i godzinę w zegarze RTC.
-    *   **Przykład:** `TIME:2023-10-27,10:30:00`
+| Bit | Stała `DipSwitchBits` | Opis |
+|-----|-----------------------|------|
+| 0 | `DIP_SLEEP_MODE_ENABLED` | Włącza tryb oszczędzania energii |
+| 1 | `DIP_TRACKER_LDR_CALIBRATION` | Kalibracja fotorezystorów przy starcie |
+| 2 | `DIP_TRACKER_SERVO_CALIBRATION` | Kalibracja serw przy starcie (przejazd 0–180°) |
+| 3 | `DIP_TRACKER_INITIAL_SEARCH` | Aktywne wyszukiwanie słońca po starcie |
+| 4 | `DIP_TRACKER_USE_JOYSTICK` | Manualne sterowanie joystickiem |
+| 5 | `DIP_TRACKER_LDR_SENSORS_CONNECTED` | Fotorezystory są fizycznie podłączone |
+| 6 | `DIP_TRACKER_ENABLE_SERVO_MOVEMENT` | Globalna blokada ruchu serw trackera |
+| 7 | `DIP_TRACKER_ENABLE_DEBUG_PRINT` | Szczegółowe logi SunTracker na Serial |
+| 8–15 | — | Wolne |
 
-*   **Sterowanie serwami (Sun Tracker):**
-    *   **Komenda:** `SERVO:[index]:[pozycja]`
-    *   **Opis:** Ustawia serwo modułu Sun Tracker na zadaną pozycję.
-    *   **Indeksy:** `0` - serwo poziome (H), `1` - serwo pionowe (V).
-    *   **Przykład:** `SERVO:0:120` (ustawi serwo poziome na pozycję 120 stopni).
-    *   **Komenda:** `SERVO_MOVE:[index]:[LEFT|RIGHT]`
-    *   **Opis:** Przesuwa serwo o jeden krok w zadanym kierunku.
-    *   **Przykład:** `SERVO_MOVE:1:LEFT` (przesunie serwo pionowe o jeden krok "w górę").
+> W kodzie (`main.cpp`) można symulować stan DIP przez przypisanie wartości do `dipState` — przydatne w testach bez fizycznego modułu.
+
+### 2.2. Konfiguracja w kodzie (`main.cpp` + `SunTracker`)
+
+Wymagają rekompilacji. Dotyczą trackera (`SunTrackerConfig`):
+
+| Parametr | Wartość domyślna | Opis |
+|----------|-----------------|------|
+| `servoVMinAngle` / `servoVMaxAngle` | 0 / 90 | Zakres kąta serwa pionowego |
+| `servoHMinAngle` / `servoHMaxAngle` | 0 / 180 | Zakres kąta serwa poziomego |
+| `defaultServoSpeed` | 100 | Prędkość ruchu serw (większa = wolniej) |
+| `defaultTolerance` | 50 | Czułość trackera (min. różnica LDR wywołująca ruch) |
+
+### 2.3. Plik `config.txt` na karcie SD
+
+Wczytywany przy starcie, format `klucz=wartość`. Nie wymaga rekompilacji.
+
+| Klucz | Domyślna | Opis |
+|-------|----------|------|
+| `active_mode_minutes` | `5` | Czas aktywności po wybudzeniu (minuty) |
+| `sensor_update_interval_ms` | `1000` | Interwał odczytu sensorów i zapisu na SD (ms) |
+| `led_brightness` | `7` | Jasność wyświetlacza TM1637 (0–15) |
+| `tracker_update_interval_ms` | `300000` | Interwał aktualizacji trackera (ms) |
+
+---
+
+## 3. Sterowanie przez port szeregowy (9600 baud)
+
+| Komenda | Przykład | Opis |
+|---------|---------|------|
+| `TIME:YYYY-MM-DD,HH:MM:SS` | `TIME:2025-06-01,12:00:00` | Ustawia czas RTC |
+| `SERVO:[index]:[kąt]` | `SERVO:0:120` | Ustawia serwo (0=H, 1=V) na zadany kąt |
+| `SERVO_MOVE:[index]:[dir]` | `SERVO_MOVE:1:LEFT` | Przesuwa serwo o jeden krok |
+| `SAVE_CONFIG` | — | Zapisuje konfigurację na kartę SD |
+| `CALIBRATE_SERVOS` | — | Uruchamia sekwencję kalibracji serw |
+
+---
+
+## 4. Ekrany LCD (20x4)
+
+Nawigacja: enkoder obrotowy (obrót = zmiana ekranu, klik = powrót do MAIN).
+
+| Ekran | Zawartość |
+|-------|-----------|
+| **MAIN** | Data, czas, temperatura BME280/DHT, wilgotność, ciśnienie |
+| **TRACKER** | Pozycja servo H/V, wartości 4 fotorezystorów (TL, TR, DL, DR) |
+| **GPS** | Kurs, prędkość (km/h i węzły), współrzędne, czas UTC |
+| **STATUS** | Stan modułów (RTC, BME280, DHT11, SD, GPS, Control Panel, Servos) |
+
+---
+
+## 5. Sun Tracker — maszyna stanów
+
+```
+STARTUP_WAIT → INIT → [LDR_CALIBRATE] → [SERVO_CALIBRATE] → CENTERING → [SEARCHING] → RUNNING ↔ MANUAL_CONTROL
+                                                                                           ↓
+                                                                                         PARKED
+```
+
+- Kalibracja LDR zapisywana/wczytywana z EEPROM (adres 0, magic key `0x5453`)
+- Kroki wyszukiwania: 20° w osi H i V
+- Normalizacja LDR: wartości raw → 0–1023 według min/max z kalibracji
+
+---
+
+## 6. Power Manager
+
+- `ACTIVE` → `PREPARE_SLEEP` → `SLEEPING` po upływie `active_mode_minutes`
+- Wybudzenie: alarm RTC (INT0) lub czujnik dotykowy TTP223 (INT1)
+- Przed snem: de-energetyzacja linii danych (INPUT bez pull-up), wyłączenie MOSFET
+- Watchdog Timer: 2 s (reset systemu przy zawieszeniu)
