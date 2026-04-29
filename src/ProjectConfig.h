@@ -12,6 +12,12 @@ struct Configuration {
   uint32_t sensorUpdateIntervalMs = 1000; // Domyślnie 1 sekunda (dla LCD, SD)
   uint32_t trackerUpdateIntervalMs = 300000; // Domyślnie 5 minut (dla SunTracker)
   uint8_t ledBrightness = 7;            // Domyślnie 7
+  uint32_t backlightBootDurationMs = 60000;   // Backlight ON po boot/wake-up (60s)
+  uint32_t backlightTouchDurationMs = 30000;  // Backlight ON po krótkim tknięciu (30s)
+  uint32_t backlightEncoderDurationMs = 10000; // Backlight ON po obrocie/kliku enkodera (10s)
+  uint32_t longPressThresholdMs = 5000;       // Próg detekcji long press = force sleep (5s)
+  uint32_t gpsNoDataTimeoutMs = 10000;        // Brak żadnych bajtów GPS przez tyle ms → NO_MODULE
+  uint32_t gpsBadDataTimeoutMs = 15000;       // Bajty są, ale brak NMEA przez tyle ms → BAD_DATA
 };
 
 // NOWA STRUKTURA: Przechowuje flagi konfiguracyjne odczytywane przy starcie

@@ -40,7 +40,9 @@ public:
   bool isAwake();
   void resetActiveTimer();
   void setActiveModeDuration(uint32_t minutes);
-  
+  void forceSleep();          // Wymusza natychmiastowe przejście do PREPARE_SLEEP
+  bool consumeWakeEvent();    // Zwraca true raz po obudzeniu (dla powiadomienia main.cpp)
+
   // Metoda publiczna, aby można było jej użyć w setup() w trybie bez uśpienia
   void powerUpPeripherals();
 
@@ -58,6 +60,7 @@ private:
   uint8_t _dataPinCount;
   SystemState _currentState;
   Timer _activeModeTimer;
+  bool _wakeEventPending = false;
   
   uint8_t _onState;
   uint8_t _offState;

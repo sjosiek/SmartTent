@@ -4,6 +4,13 @@
 #include <Arduino.h>
 #include <TinyGPS++.h> // ZMIANA: Używamy biblioteki TinyGPS++
 
+enum class GPSHealth {
+  NO_MODULE,   // brak bajtów na linii UART przez >no_data_timeout
+  BAD_DATA,    // bajty są, ale brak poprawnego NMEA przez >bad_data_timeout
+  SEARCHING,   // NMEA OK, brak fix
+  FIXED        // fix uzyskany (location.isValid())
+};
+
 class GPSModule {
 public:
   // Konstruktor
@@ -12,6 +19,7 @@ public:
   // Metody publiczne
   void begin();
   bool update();
+  GPSHealth getHealth(unsigned long noDataTimeoutMs, unsigned long badDataTimeoutMs) const;
 
   // Gettery do danych
   bool isDataValid() const;
@@ -54,6 +62,10 @@ private:
   uint8_t _hour;
   uint8_t _minute;
   uint8_t _second;
+
+  // Tracking aktywności linii UART do detekcji health
+  unsigned long _firstByteAtMs;     // 0 = nigdy nie było bajta
+  unsigned long _lastSentenceAtMs;  // 0 = nigdy nie zdekodowano NMEA
 };
 
 #endif

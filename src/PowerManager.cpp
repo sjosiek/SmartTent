@@ -103,24 +103,23 @@ void PowerManager::prepareToSleep() {
   _lcd->printSleepMessage();
   delay(3000);
   _lcd->noBacklight();
-  powerDownPeripherals();
 
-  // KROK 1: Upewnij się, że flaga poprzedniego alarmu jest wyczyszczona.
-  // To kluczowe, aby pin SQW mógł ponownie przejść w stan wysoki i wygenerować
-  // nowe zbocze opadające przy następnym alarmie.
+  // KOLEJNOŚĆ KRYTYCZNA: alarm RTC ustawiamy ZANIM odetniemy zasilanie/I2C.
+  // Wcześniej `powerDownPeripherals()` było przed operacjami I2C — co powodowało
+  // memory corruption / crash, bo `_clock->setAlarm1()` próbowało gadać z RTC
+  // przez deenergetyzowane piny SDA/SCL (patrz log z 1.3.4 → fix w 1.3.6).
   _clock->clearAlarm(1);
   DateTime now = _clock->getTime();
-  // Ustawiamy alarm na 5 minut w przyszłość, zgodnie z komunikatem.
-  DateTime future(now + TimeSpan(0, 0, 1, 0)); // Hardcoded: 1 minuta (TODO: przenieść do config.txt jako sleep_interval_minutes)
-  // Używamy DS3231_A1_Date, aby alarm zadziałał o konkretnej dacie i godzinie.
-  // Poprzedni tryb (DS3231_A1_Second) powodował, że alarm dzwonił co minutę,
-  // gdy tylko sekundy się zgadzały, co nie było zamierzonym zachowaniem.
+  DateTime future(now + TimeSpan(0, 0, 1, 0)); // Hardcoded: 1 minuta (TODO: config.txt jako sleep_interval_minutes)
   if (!_clock->setAlarm1(future, DS3231_A1_Date)) {
     Serial.println(F("Błąd ustawiania alarmu!"));
   }
   Serial.println(F("Ustawiono alarm na za 1 minute. Dobranoc."));
-  delay(100); // Krótki delay na wszelki wypadek.
-  Serial.flush(); // KLUCZOWA ZMIANA: Czekamy, aż wszystkie dane zostaną wysłane przez port szeregowy.
+  Serial.flush(); // wszystko wysłane PRZED odcięciem peryferiów
+
+  // Dopiero teraz bezpiecznie deenergetyzujemy linie danych i tniemy MOSFET.
+  powerDownPeripherals();
+  delay(100); // krótki delay na wszelki wypadek.
 }
 
 void PowerManager::goToSleep() {
@@ -144,17 +143,32 @@ void PowerManager::goToSleep() {
 }
 
 void PowerManager::handleWakeUp() {
-  
+
   if (g_wakeUpSource != WakeUpSource::NONE) {
     if (g_wakeUpSource == WakeUpSource::RTC_ALARM) {
       _clock->clearAlarm(1);
       Serial.println(F("Obudził mnie ALARM. Uruchamiam system na cykl pracy."));
       _currentState = SystemState::POWER_UP;
+      _wakeEventPending = true;
     } else if (g_wakeUpSource == WakeUpSource::MANUAL_TOUCH) {
       Serial.println(F("Obudził mnie DOTYK. Uruchamiam system."));
       _currentState = SystemState::POWER_UP;
+      _wakeEventPending = true;
     }
   }
+}
+
+void PowerManager::forceSleep() {
+  Serial.println(F("Force sleep — wymuszone przez long press touch."));
+  _currentState = SystemState::PREPARE_SLEEP;
+}
+
+bool PowerManager::consumeWakeEvent() {
+  if (_wakeEventPending) {
+    _wakeEventPending = false;
+    return true;
+  }
+  return false;
 }
 
 void PowerManager::setActiveModeDuration(uint32_t minutes) {

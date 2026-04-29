@@ -101,6 +101,12 @@ bool SDCard::readConfiguration(const char* filename, Configuration& config) {
       if (strcmp(key, "sensor_interval") == 0) config.sensorUpdateIntervalMs = atol(value);
       if (strcmp(key, "tracker_interval") == 0) config.trackerUpdateIntervalMs = atol(value);
       if (strcmp(key, "led_brightness") == 0) config.ledBrightness = atoi(value);
+      if (strcmp(key, "backlight_boot_ms") == 0) config.backlightBootDurationMs = atol(value);
+      if (strcmp(key, "backlight_touch_ms") == 0) config.backlightTouchDurationMs = atol(value);
+      if (strcmp(key, "backlight_encoder_ms") == 0) config.backlightEncoderDurationMs = atol(value);
+      if (strcmp(key, "long_press_ms") == 0) config.longPressThresholdMs = atol(value);
+      if (strcmp(key, "gps_no_data_timeout_ms") == 0) config.gpsNoDataTimeoutMs = atol(value);
+      if (strcmp(key, "gps_bad_data_timeout_ms") == 0) config.gpsBadDataTimeoutMs = atol(value);
     }
   }
   configFile.close();
@@ -130,6 +136,12 @@ bool SDCard::writeConfiguration(const Configuration& config, const char* filenam
   snprintf(buffer, sizeof(buffer), "sensor_interval=%lu", config.sensorUpdateIntervalMs); configFile.println(buffer);
   snprintf(buffer, sizeof(buffer), "tracker_interval=%lu", config.trackerUpdateIntervalMs); configFile.println(buffer);
   snprintf(buffer, sizeof(buffer), "led_brightness=%u", config.ledBrightness); configFile.println(buffer);
+  snprintf(buffer, sizeof(buffer), "backlight_boot_ms=%lu", config.backlightBootDurationMs); configFile.println(buffer);
+  snprintf(buffer, sizeof(buffer), "backlight_touch_ms=%lu", config.backlightTouchDurationMs); configFile.println(buffer);
+  snprintf(buffer, sizeof(buffer), "backlight_encoder_ms=%lu", config.backlightEncoderDurationMs); configFile.println(buffer);
+  snprintf(buffer, sizeof(buffer), "long_press_ms=%lu", config.longPressThresholdMs); configFile.println(buffer);
+  snprintf(buffer, sizeof(buffer), "gps_no_data_timeout_ms=%lu", config.gpsNoDataTimeoutMs); configFile.println(buffer);
+  snprintf(buffer, sizeof(buffer), "gps_bad_data_timeout_ms=%lu", config.gpsBadDataTimeoutMs); configFile.println(buffer);
 
   configFile.close();
   Serial.println(F("Konfiguracja została pomyślnie zapisana na karcie SD."));

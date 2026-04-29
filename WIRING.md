@@ -52,7 +52,7 @@ Wszystkie peryferia których VCC jest podłączone przez moduł:
 | BME280 | I2C (pin 20, 21) |
 | RTC DS3231 | I2C (pin 20, 21) — tylko linie danych, VCC RTC może być stałe |
 | DHT11/22 | Digital (pin 46) |
-| Moduł GPS | Serial1 (pin 18, 19) |
+| Moduł GPS | Serial2 (pin 16, 17) |
 | TM1637 LED | Digital (pin 22, 23) |
 | Karta SD | SPI (pin 50–53) |
 
@@ -70,8 +70,8 @@ Wszystkie peryferia których VCC jest podłączone przez moduł:
    ┌────────────────┤ 20 (SDA) ◄──────────────── ┼── I2C SDA
    │  ┌─────────────┤ 21 (SCL) ◄──────────────── ┼── I2C SCL
    │  │             │                            │
-   │  │   ┌─────────┤ 18 (TX1) ──────────────────┼──▶ GPS RX
-   │  │   │   ┌─────┤ 19 (RX1) ◄─────────────────┼── GPS TX
+   │  │   ┌─────────┤ 16 (TX2) ──────────────────┼──▶ GPS RX
+   │  │   │   ┌─────┤ 17 (RX2) ◄─────────────────┼── GPS TX
    │  │   │   │     │                            │
    │  │   │   │     │  2 (INT0) ◄── RTC SQW (alarm)
    │  │   │   │     │  3 (INT1) ◄── TTP223 OUT (touch)
@@ -138,11 +138,11 @@ Arduino 21 (SCL) ──┼──────────────────
 
 > Rezystory pull-up I2C (4.7kΩ do 5V) zazwyczaj wbudowane w moduły.
 
-### Moduł GPS (Serial1)
+### Moduł GPS (Serial2)
 
 ```
-Arduino 18 (TX1) ──▶ GPS RX
-Arduino 19 (RX1) ◄── GPS TX
+Arduino 16 (TX2) ──▶ GPS RX
+Arduino 17 (RX2) ◄── GPS TX
 Arduino 5V       ──▶ GPS VCC   (przez MOSFET lub bezpośrednio)
 Arduino GND      ──▶ GPS GND
 ```

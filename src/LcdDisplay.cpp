@@ -31,11 +31,11 @@ bool LcdDisplay::checkAndInit() {
 
 void LcdDisplay::printWelcomeMessage() {
   lcd.clear();
-  lcd.setCursor(0, 1);
+  lcd.setCursor(0, 0);
   lcd.print("    " FIRMWARE_NAME);
-  lcd.setCursor(0, 2);
+  lcd.setCursor(0, 1);
   lcd.print("      v" FIRMWARE_VERSION);
-  lcd.setCursor(0, 3);
+  lcd.setCursor(0, 2);
   lcd.print("    System online");
 }
 

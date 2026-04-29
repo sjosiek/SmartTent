@@ -38,7 +38,7 @@ Katalog [`claude/`](claude/) zawiera pliki pamięci kontekstowej dla Claude Code
 |------------|------|-----------|
 | **I2C** (SDA/SCL) | 20, 21 | LCD 20x4 (0x27), BME280 (0x76), RTC DS3231 |
 | **SPI** (MOSI/MISO/SCK/CS) | 51, 50, 52, **53** | Karta SD |
-| **Serial1** (RX1/TX1) | 19, 18 | Moduł GPS |
+| **Serial2** (RX2/TX2) | 17, 16 | Moduł GPS |
 
 ### Piny cyfrowe i analogowe
 

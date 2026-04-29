@@ -14,8 +14,8 @@
  * --- Magistrala SPI (MOSI: 51, MISO: 50, SCK: 52) ---
  *   - Czytnik kart SD (CS -> 53)
  *
- * --- Magistrala Serial1 (RX1: 19, TX1: 18) ---
- *   - Moduł GPS (GPS TX -> 19, GPS RX -> 18)
+ * --- Magistrala Serial2 (RX2: 17, TX2: 16) ---
+ *   - Moduł GPS (GPS TX -> 17, GPS RX -> 16)
  *
  * --- Zasilanie i Przerwania ---
  *   - Moduł zasilania (MOSFET Gate) -> 4
@@ -155,8 +155,8 @@ WeatherSensor sensor;          //BME 280
 LcdDisplay lcd(LCD_ADDRESS, LCD_COLS, LCD_ROWS);  // LCD
 LedDisplay led(LED_CLK_PIN, LED_DIO_PIN);         // LED
 
-// ZMIANA: Inicjalizacja modułu GPS. Zakładamy, że jest podłączony do portu Serial1.
-GPSModule gps(Serial2); // TEST: Zmieniamy na Serial2
+// Moduł GPS na porcie Serial2 (TX2 = pin 16, RX2 = pin 17).
+GPSModule gps(Serial2);
 
 // ZMIANA: Inicjalizacja czytnika przełączników DIP
 HardwareConfigReader dipReader(DIP_LATCH_PIN, DIP_CLOCK_PIN, DIP_DATA_PIN);
@@ -204,22 +204,67 @@ ModuleStatus g_moduleStatuses[static_cast<int>(ModuleID::MODULE_COUNT)] = {
 };
 // ----------------------------------------------------
 
+// --- MCUSR mirror via Optiboot r2 (devplan: diagnostyka twardych resetów 1.3.4) ---
+// Bootloader Optiboot zeruje MCUSR przed startem aplikacji, ale kopiuje
+// oryginalną wartość do rejestru r2. Odczytujemy r2 w sekcji .init0
+// (uruchamiane PRZED inicjalizacją runtime C++) i zapisujemy do .noinit
+// (zmienna nie jest zerowana przez startup code). Następnie setup() czyta
+// to bezpośrednio.
+uint8_t g_mcusrMirror __attribute__((section(".noinit")));
+
+void getMCUSRFromR2(void) __attribute__((naked, used, section(".init0")));
+void getMCUSRFromR2(void) {
+  __asm__ __volatile__ ("mov %0, r2\n" : "=r" (g_mcusrMirror));
+}
+
+// --- Backlight scheduling ---
+// 0 = backlight wygaszony / brak aktywnego okna; >0 = wyłącz przy millis() >= wartość.
+static unsigned long g_backlightOffAtMs = 0;
+
+// Po wybudzeniu ze snu palec może wciąż leżeć na sensorze. Bez tej flagi pierwszy
+// 5s trzymania zaraz po wake-up od razu by zafire'ował force sleep.
+// Flaga blokuje cały touch-handling do najbliższego release.
+static bool g_skipTouchUntilRelease = false;
+
+static void enableBacklightFor(unsigned long durationMs) {
+  lcd.backlight();
+  g_backlightOffAtMs = millis() + durationMs;
+  if (g_backlightOffAtMs == 0) g_backlightOffAtMs = 1; // 0 ma znaczenie sentinel
+}
+
+static void updateBacklightTimer() {
+  if (g_backlightOffAtMs != 0 && (long)(millis() - g_backlightOffAtMs) >= 0) {
+    lcd.noBacklight();
+    g_backlightOffAtMs = 0;
+  }
+}
+
 void setup() {
   pinMode(LED_BUILTIN, OUTPUT); // Inicjalizacja wbudowanej diody LED
   Serial.begin(9600);
-  // ZMIANA: Inicjalizacja portu szeregowego dla GPS na samym początku,
-  // zgodnie z dobrą praktyką - tuż po inicjalizacji głównego portu.
-  Serial2.begin(9600); // TEST: Zmieniamy na Serial2
+  // Inicjalizacja portu szeregowego dla GPS — Serial2 @ 9600 baud.
+  Serial2.begin(9600);
 
-  // ZMIANA: Obsługa Watchdog Timera na samym początku
-  // // Sprawdzamy, czy poprzedni reset był spowodowany przez Watchdoga.
-  // if (MCUSR & (1 << WDRF)) {
-  //   Serial.println(F("\n!!! SYSTEM ZRESETOWANY PRZEZ WATCHDOG TIMER !!!"));
-  // }
-  // // Czyścimy flagi resetu, aby uniknąć fałszywych odczytów w przyszłości.
-  // MCUSR = 0;
-  // // Natychmiast wyłączamy Watchdoga, aby dać czas na wykonanie całej funkcji setup().
-  // wdt_disable();
+  // Diagnostyka przyczyny ostatniego resetu. Czytamy g_mcusrMirror, a nie MCUSR.
+  // Bootloader Optiboot zeruje MCUSR ale kopiuje do r2 (my czytamy r2 w .init0).
+  // Bootloader stk500v2 (default na Mega 2560) NIE kopiuje do r2 — wtedy g_mcusrMirror
+  // to losowy SRAM. Wykrywamy to po ustawionych bitach 5/6/7 (zarezerwowane = 0
+  // w realnym MCUSR) i oznaczamy jako "(invalid)".
+  uint8_t resetFlags = g_mcusrMirror;
+  bool resetFlagsReliable = ((resetFlags & 0xE0) == 0);
+
+  Serial.print(F("Reset cause: "));
+  if (!resetFlagsReliable) {
+    Serial.print(F("(invalid - bootloader)"));
+  } else if (resetFlags & (1 << WDRF))  Serial.print(F("WATCHDOG"));
+  else if (resetFlags & (1 << BORF))    Serial.print(F("BROWN-OUT"));
+  else if (resetFlags & (1 << EXTRF))   Serial.print(F("EXTERNAL"));
+  else if (resetFlags & (1 << PORF))    Serial.print(F("POWER-ON"));
+  else                                  Serial.print(F("(none)"));
+  Serial.print(F(" (0x"));
+  if (resetFlags < 0x10) Serial.print('0');
+  Serial.print(resetFlags, HEX);
+  Serial.println(')');
 
   Serial.println(F("\nBooting " FIRMWARE_BUILD_INFO "..."));
 
@@ -266,8 +311,25 @@ void setup() {
   lcd.init();
   lcd.clear();
   lcd.setCursor(0, 0);
-  lcd.print("Boot: " FIRMWARE_BUILD_INFO);
-  delay(2000);
+  lcd.print("Boot: ");
+  lcd.setCursor(0, 1);
+  lcd.print(FIRMWARE_BUILD_INFO);
+  // Pokazujemy przyczynę ostatniego resetu na LCD (gdy Serial niedostępny).
+  lcd.setCursor(0, 2);
+  lcd.print("Reset: ");
+  if (!resetFlagsReliable) {
+    lcd.print("(invalid)");
+  } else if (resetFlags & (1 << WDRF))  lcd.print("WATCHDOG");
+  else if (resetFlags & (1 << BORF))    lcd.print("BROWN-OUT");
+  else if (resetFlags & (1 << EXTRF))   lcd.print("EXTERNAL");
+  else if (resetFlags & (1 << PORF))    lcd.print("POWER-ON");
+  else                                  lcd.print("(none)");
+  // 4. linia: surowa wartość MCUSR (0xXX).
+  char rawBuf[16];
+  snprintf(rawBuf, sizeof(rawBuf), "MCUSR=0x%02X", resetFlags);
+  lcd.setCursor(0, 3);
+  lcd.print(rawBuf);
+  delay(3000);
   lcd.clear();
 
   if (g_runtimeFlags.sleepModeEnabled) {
@@ -388,6 +450,11 @@ void setup() {
   delay(3000);
   lcd.showMainScreen();
 
+  // Backlight zostaje włączony jeszcze przez `backlight_boot_ms` po końcu setup,
+  // potem updateBacklightTimer() zgasi go automatycznie. Następnie tylko touch
+  // (lub wybudzenie ze snu) ponownie zapala podświetlenie.
+  enableBacklightFor(g_config.backlightBootDurationMs);
+
   // ZMIANA: Włączamy Watchdog Timer na końcu setup z timeoutem 2 sekund.
   // Serial.println(F("Inicjalizacja zakończona. Włączam Watchdog Timer (2s)..."));
   // wdt_enable(WDTO_2S);
@@ -395,12 +462,42 @@ void setup() {
 
 // --- Prywatna funkcja pomocnicza do obsługi logiki w trybie aktywnym ---
 void handleActiveMode() {
-  // Obsługa przycisku dotykowego do resetowania timera uśpienia
-  if (g_runtimeFlags.sleepModeEnabled) {
-    touchSensor.update();
-    if (touchSensor.wasPressed()) {
-      powerManager.resetActiveTimer();
+  // --- Touch sensor: short press = backlight 30s (+ reset timera aktywności gdy sleep enabled),
+  //     long press >= long_press_ms = force sleep (gdy sleep enabled). ---
+  static unsigned long touchPressStartMs = 0;
+  static bool longPressFired = false;
+
+  touchSensor.update();
+
+  if (g_skipTouchUntilRelease) {
+    // Czekamy na puszczenie palca po wybudzeniu — nie traktujemy tego jako press.
+    if (!touchSensor.isPressed()) {
+      g_skipTouchUntilRelease = false;
+      touchPressStartMs = 0;
+      longPressFired = false;
     }
+  } else if (touchSensor.isPressed()) {
+    if (touchPressStartMs == 0) {
+      touchPressStartMs = millis();
+      longPressFired = false;
+    } else if (!longPressFired &&
+               (millis() - touchPressStartMs >= g_config.longPressThresholdMs)) {
+      longPressFired = true;
+      if (g_runtimeFlags.sleepModeEnabled) {
+        powerManager.forceSleep();
+      }
+      // gdy sleepModeEnabled=false → no-op (sleep wyłączony)
+    }
+  } else {
+    if (touchPressStartMs != 0 && !longPressFired) {
+      // krótkie tknięcie
+      enableBacklightFor(g_config.backlightTouchDurationMs);
+      if (g_runtimeFlags.sleepModeEnabled) {
+        powerManager.resetActiveTimer();
+      }
+    }
+    touchPressStartMs = 0;
+    longPressFired = false;
   }
 
   // Cykliczny odczyt czujników i aktualizacja danych
@@ -444,18 +541,27 @@ void handleActiveMode() {
     g_sensorData.gps_speed_kts = gps.getSpeedKts();
     g_sensorData.gps_heading = gps.getHeading();
 
-    // ZMIANA: Dynamiczna aktualizacja statusu GPS
+    // Aktualizacja statusu GPS na podstawie aktywności linii UART (devplan005)
     auto& gpsStatus = g_moduleStatuses[static_cast<int>(ModuleID::GPS)];
-    if (g_sensorData.gps_is_valid) {
-      gpsStatus.health = ModuleHealth::OK;
-      snprintf(gpsStatus.statusText, sizeof(gpsStatus.statusText), "FIXED (%d)", g_sensorData.gps_sats);
-    } else {
-      if (gpsStatus.health != ModuleHealth::ERROR) { // Nie nadpisuj stanu błędu
+    GPSHealth gpsHealth = gps.getHealth(g_config.gpsNoDataTimeoutMs, g_config.gpsBadDataTimeoutMs);
+    switch (gpsHealth) {
+      case GPSHealth::FIXED:
+        gpsStatus.health = ModuleHealth::OK;
+        snprintf(gpsStatus.statusText, sizeof(gpsStatus.statusText), "FIXED (%d)", g_sensorData.gps_sats);
+        break;
+      case GPSHealth::SEARCHING:
         gpsStatus.health = ModuleHealth::WARNING;
         strcpy(gpsStatus.statusText, "SEARCHING");
-      }
+        break;
+      case GPSHealth::BAD_DATA:
+        gpsStatus.health = ModuleHealth::ERROR;
+        strcpy(gpsStatus.statusText, "BAD DATA");
+        break;
+      case GPSHealth::NO_MODULE:
+        gpsStatus.health = ModuleHealth::ERROR;
+        strcpy(gpsStatus.statusText, "NO MODULE");
+        break;
     }
-    // Koniec zmiany
 
 
     lcd.update(g_sensorData);
@@ -496,17 +602,20 @@ void loop() {
 
   controlPanel.update(); // Odczytuj stan joysticków, enkodera i przycisków
 
-  // ZMIANA: Obsługa przełączania ekranów za pomocą enkodera
+  // Obsługa przełączania ekranów enkoderem — każda interakcja zapala backlight na backlight_encoder_ms.
   int encoderChange = controlPanel.getEncoderChange();
   if (encoderChange > 0) {
     lcd.nextScreen();
+    enableBacklightFor(g_config.backlightEncoderDurationMs);
   } else if (encoderChange < 0) {
     lcd.previousScreen();
+    enableBacklightFor(g_config.backlightEncoderDurationMs);
   }
 
-  // ZMIANA: Używamy kliknięcia enkodera do powrotu na ekran główny
+  // Klik enkodera → powrót na ekran główny + zapal backlight.
   if (controlPanel.wasEncoderClicked()) {
     lcd.showMainScreen();
+    enableBacklightFor(g_config.backlightEncoderDurationMs);
   }
   // wdt_reset();
 
@@ -514,7 +623,12 @@ void loop() {
   // To kluczowe dla TinyGPS++, aby mogła ona ciągle przetwarzać dane z portu szeregowego.
   gps.update();
 
-  sunTracker.update();
+  // Pomijamy sunTracker.update() gdy tracker jest "odłączony" — czyli LDR-y
+  // nie są podpięte LUB ruch serw jest wyłączony (DIP bity 5 i 6).
+  // Bez LDR nie ma czego mierzyć, bez serw nie ma czego ruszać.
+  if (g_runtimeFlags.trackerLdrSensorsConnected && g_runtimeFlags.trackerEnableServoMovement) {
+    sunTracker.update();
+  }
   // wdt_reset();
 
   // Mruganie wbudowaną diodą LED jako "heartbeat" systemu
@@ -530,9 +644,25 @@ void loop() {
     }
   }
 
-  // ZMIANA: Maszyna stanów PowerManager musi być aktualizowana zawsze, niezależnie od trybu.
-  powerManager.update();
+  // PowerManager.update() przetwarzane TYLKO gdy sleep mode włączony (DIP bit 0 = 1).
+  // Bez tego guarda timer i tak doliczał do końca i wchodził w PREPARE_SLEEP, co wywoływało
+  // crash przez I2C-after-deenergize w prepareToSleep() — patrz log 1.3.4.
+  if (g_runtimeFlags.sleepModeEnabled) {
+    powerManager.update();
+  }
   // wdt_reset();
+
+  // Po wybudzeniu (RTC alarm lub touch) — backlight ON na okno boot (60s domyślnie).
+  // Dodatkowo, jeśli user trzyma palec po wybudzeniu, blokujemy detekcję long-press
+  // do następnego release przez touchSensor (consume jednorazowego wasPressed eventu nie wystarczy,
+  // bo używamy isPressed() — ale flaga touchPressStartMs zostanie ustawiona dopiero w handleActiveMode).
+  if (powerManager.consumeWakeEvent()) {
+    enableBacklightFor(g_config.backlightBootDurationMs);
+    g_skipTouchUntilRelease = true;
+  }
+
+  // Wygaszanie podświetlenia po upływie zaplanowanego okna.
+  updateBacklightTimer();
   
   // Aktualizacja stanu serwomechanizmów (musi być wywoływana w każdej pętli)
   for (int i = 0; i < SERVO_COUNT; i++) {
